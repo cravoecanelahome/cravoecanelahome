@@ -14,13 +14,170 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      fee_settings: {
+        Row: {
+          created_at: string
+          credit: number
+          debit: number
+          id: number
+          installment_base: number
+          installment_per: number
+          pix: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credit?: number
+          debit?: number
+          id?: number
+          installment_base?: number
+          installment_per?: number
+          pix?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credit?: number
+          debit?: number
+          id?: number
+          installment_base?: number
+          installment_per?: number
+          pix?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          category: string
+          cost: number
+          created_at: string
+          id: string
+          min_stock: number
+          name: string
+          photo: string | null
+          price: number
+          purchase_extra: number
+          purchase_qty: number
+          real_cost: number
+          stock: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          cost?: number
+          created_at?: string
+          id?: string
+          min_stock?: number
+          name: string
+          photo?: string | null
+          price?: number
+          purchase_extra?: number
+          purchase_qty?: number
+          real_cost?: number
+          stock?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          cost?: number
+          created_at?: string
+          id?: string
+          min_stock?: number
+          name?: string
+          photo?: string | null
+          price?: number
+          purchase_extra?: number
+          purchase_qty?: number
+          real_cost?: number
+          stock?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sales: {
+        Row: {
+          channel: string
+          created_at: string
+          created_by: string | null
+          fee_rate: number
+          fee_value: number
+          id: string
+          installments: number
+          payment: string
+          product_id: string | null
+          product_name: string
+          qty: number
+          shipping_cost: number
+          shipping_paid_by: string | null
+          unit_cost: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          fee_rate?: number
+          fee_value?: number
+          id?: string
+          installments?: number
+          payment: string
+          product_id?: string | null
+          product_name: string
+          qty: number
+          shipping_cost?: number
+          shipping_paid_by?: string | null
+          unit_cost: number
+          unit_price: number
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          fee_rate?: number
+          fee_value?: number
+          id?: string
+          installments?: number
+          payment?: string
+          product_id?: string | null
+          product_name?: string
+          qty?: number
+          shipping_cost?: number
+          shipping_paid_by?: string | null
+          unit_cost?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      register_sale: {
+        Args: {
+          _channel: string
+          _fee_rate: number
+          _installments: number
+          _payment: string
+          _product_id: string
+          _qty: number
+          _shipping_cost: number
+          _shipping_paid_by: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
