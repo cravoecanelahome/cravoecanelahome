@@ -54,6 +54,7 @@ export function Shell({ children }: { children: ReactNode }) {
         ))}
       </nav>
     </div>
+    </AuthGate>
   );
 }
 
