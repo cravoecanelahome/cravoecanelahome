@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Camera, Plus, Search, Trash2, X } from "lucide-react";
 import { Shell, StatusBadge } from "@/components/Shell";
 import {
-  brl, CATEGORIES, deleteProduct, margin, resizeImage, saveProduct, stockStatus, useStore, type Product,
+  brl, CATEGORIES, deleteProduct, margin, realUnitCost, resizeImage, saveProduct, stockStatus, useStore, type Product,
 } from "@/lib/store";
 
 export const Route = createFileRoute("/estoque")({
@@ -18,8 +18,8 @@ export const Route = createFileRoute("/estoque")({
   component: Estoque,
 });
 
-type Draft = Omit<Product, "id"> & { id?: string };
-const blank: Draft = { name: "", category: "Aromatizadores", stock: 0, minStock: 3, cost: 0, price: 0 };
+type Draft = Omit<Product, "id" | "realCost"> & { id?: string; realCost?: number };
+const blank: Draft = { name: "", category: "Aromatizadores", stock: 0, minStock: 3, cost: 0, purchaseExtra: 0, purchaseQty: 1, price: 0 };
 
 function Estoque() {
   const { products } = useStore();
@@ -58,7 +58,7 @@ function Estoque() {
       ) : (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
           {list.map((p) => {
-            const m = margin(p.cost, p.price);
+            const m = margin(p.realCost, p.price);
             return (
               <button key={p.id} onClick={() => setEditing(p)} className="overflow-hidden rounded-2xl border border-border bg-card text-left transition hover:shadow-warm">
                 <div className="aspect-square bg-secondary">
@@ -85,7 +85,9 @@ function Estoque() {
 
 function ProductForm({ draft, onClose }: { draft: Draft; onClose: () => void }) {
   const [d, setD] = useState<Draft>(draft);
-  const m = margin(d.cost, d.price);
+  const [saving, setSaving] = useState(false);
+  const real = realUnitCost(d.cost, d.purchaseExtra, d.purchaseQty);
+  const m = margin(real, d.price);
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD({ ...d, [k]: v });
   const num = (v: string) => Math.max(0, Number(v.replace(",", ".")) || 0);
 
@@ -96,8 +98,8 @@ function ProductForm({ draft, onClose }: { draft: Draft; onClose: () => void }) 
         onSubmit={(e) => {
           e.preventDefault();
           if (!d.name.trim()) return;
-          saveProduct(d);
-          onClose();
+          setSaving(true);
+          saveProduct(d).then(onClose, () => { setSaving(false); alert("Não foi possível salvar. Verifique a internet."); });
         }}
         className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-card p-5 md:rounded-3xl"
       >
@@ -126,7 +128,13 @@ function ProductForm({ draft, onClose }: { draft: Draft; onClose: () => void }) 
           <Field label="Quantidade"><input inputMode="numeric" value={d.stock} onChange={(e) => set("stock", Math.floor(num(e.target.value)))} className="inp" /></Field>
           <Field label="Avisar quando tiver"><input inputMode="numeric" value={d.minStock} onChange={(e) => set("minStock", Math.floor(num(e.target.value)))} className="inp" /></Field>
           <Field label="Custo (nota) R$"><input inputMode="decimal" defaultValue={d.cost || ""} onChange={(e) => set("cost", num(e.target.value))} className="inp" placeholder="0,00" /></Field>
+          <Field label="Frete/embalagem da compra R$"><input inputMode="decimal" defaultValue={d.purchaseExtra || ""} onChange={(e) => set("purchaseExtra", num(e.target.value))} className="inp" placeholder="0,00" /></Field>
+          <Field label="Unidades nessa compra"><input inputMode="numeric" value={d.purchaseQty} onChange={(e) => set("purchaseQty", Math.max(1, Math.floor(num(e.target.value))))} className="inp" /></Field>
           <Field label="Preço de venda R$"><input inputMode="decimal" defaultValue={d.price || ""} onChange={(e) => set("price", num(e.target.value))} className="inp" placeholder="0,00" /></Field>
+        </div>
+        <div className="mb-3 rounded-2xl bg-secondary p-4">
+          <p className="text-sm text-muted-foreground">Custo unitário real (nota + frete/embalagem ÷ unidades)</p>
+          <p className="font-display text-2xl">{brl(real)}</p>
         </div>
 
         <div className={`mb-4 rounded-2xl p-4 ${m.value >= 0 ? "bg-ok/10" : "bg-destructive/10"}`}>
@@ -138,11 +146,11 @@ function ProductForm({ draft, onClose }: { draft: Draft; onClose: () => void }) 
 
         <div className="flex gap-2">
           {d.id && (
-            <button type="button" onClick={() => { if (confirm("Excluir este produto?")) { deleteProduct(d.id!); onClose(); } }} className="rounded-2xl border border-destructive/40 px-4 text-destructive" aria-label="Excluir">
+            <button type="button" onClick={() => { if (confirm("Excluir este produto?")) { deleteProduct(d.id!).then(onClose, () => alert("Não foi possível excluir.")); } }} className="rounded-2xl border border-destructive/40 px-4 text-destructive" aria-label="Excluir">
               <Trash2 />
             </button>
           )}
-          <button className="flex-1 rounded-2xl bg-primary py-4 text-lg font-bold text-primary-foreground">Salvar</button>
+          <button disabled={saving} className="flex-1 rounded-2xl bg-primary py-4 text-lg font-bold text-primary-foreground disabled:opacity-60">{saving ? "Salvando…" : "Salvar"}</button>
         </div>
       </form>
     </div>
