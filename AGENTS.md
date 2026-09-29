@@ -8,3 +8,6 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Access control: roles live in `team_members` (keyed by email, checked via `current_app_role()`/`is_admin()`); public signup is disabled and accounts are created only by invite from server functions in `src/lib/team.functions.ts`. Why: keeps roles off user records and lets admins change emails.
+- Sellers never read `products`/`sales`/`fee_settings` directly; they use the `catalog()`/`today_sales()` functions and `register_sale()` computes fees server-side. Why: hides costs and margins at the database level, not just in the screens.
