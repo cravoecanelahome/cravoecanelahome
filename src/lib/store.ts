@@ -1,101 +1,161 @@
 import { useSyncExternalStore } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export type Product = {
   id: string;
   name: string;
   category: string;
-  photo?: string;
+  photo?: string | null;
   stock: number;
   minStock: number;
-  cost: number;
+  cost: number; // custo da nota (unitário)
+  purchaseExtra: number; // frete/embalagem da compra (total)
+  purchaseQty: number; // unidades dessa compra
+  realCost: number; // custo unitário real
   price: number;
 };
-export type Payment = "Pix" | "Cartão" | "Dinheiro";
+export type Payment = "Pix" | "Dinheiro" | "Débito" | "Crédito" | "Parcelado";
+export const PAYMENTS: Payment[] = ["Pix", "Dinheiro", "Débito", "Crédito", "Parcelado"];
+export type Channel = "Loja física" | "WhatsApp" | "Instagram" | "Site";
+export const CHANNELS: Channel[] = ["Loja física", "WhatsApp", "Instagram", "Site"];
 export type Sale = {
   id: string;
-  productId: string;
+  productId: string | null;
   productName: string;
   qty: number;
   unitPrice: number;
   unitCost: number;
   payment: Payment;
+  installments: number;
+  channel: Channel;
+  feeValue: number;
+  shippingCost: number;
+  shippingPaidBy: "cliente" | "loja" | null;
   date: string;
 };
+export type Fees = { pix: number; debit: number; credit: number; installmentBase: number; installmentPer: number };
 
 export const CATEGORIES = ["Aromatizadores", "Velas", "Vasos", "Decoração", "Presentes", "Outros"];
 
-type State = { products: Product[]; sales: Sale[] };
-const KEY = "cravo-canela-v1";
-const empty: State = { products: [], sales: [] };
+type State = { products: Product[]; sales: Sale[]; fees: Fees; ready: boolean };
+const defaultFees: Fees = { pix: 0, debit: 1.99, credit: 3.49, installmentBase: 4.99, installmentPer: 1.5 };
+const empty: State = { products: [], sales: [], fees: defaultFees, ready: false };
 let state: State = empty;
-let loaded = false;
+let started = false;
 const listeners = new Set<() => void>();
+const emit = (patch: Partial<State>) => {
+  state = { ...state, ...patch };
+  listeners.forEach((l) => l());
+};
 
-function load() {
-  if (loaded || typeof window === "undefined") return;
-  loaded = true;
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) state = JSON.parse(raw);
-  } catch {}
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const n = (v: any) => Number(v) || 0;
+const toProduct = (r: any): Product => ({
+  id: r.id, name: r.name, category: r.category, photo: r.photo, stock: r.stock, minStock: r.min_stock,
+  cost: n(r.cost), purchaseExtra: n(r.purchase_extra), purchaseQty: r.purchase_qty, realCost: n(r.real_cost), price: n(r.price),
+});
+const toSale = (r: any): Sale => ({
+  id: r.id, productId: r.product_id, productName: r.product_name, qty: r.qty, unitPrice: n(r.unit_price),
+  unitCost: n(r.unit_cost), payment: r.payment, installments: r.installments, channel: r.channel,
+  feeValue: n(r.fee_value), shippingCost: n(r.shipping_cost), shippingPaidBy: r.shipping_paid_by, date: r.created_at,
+});
+
+async function loadProducts() {
+  const { data } = await supabase.from("products").select("*").order("name");
+  if (data) emit({ products: data.map(toProduct) });
 }
-function save(next: State) {
-  state = next;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(state));
-  } catch {
-    alert("Memória cheia: tente usar fotos menores.");
-  }
+async function loadSales() {
+  const { data } = await supabase.from("sales").select("*").order("created_at", { ascending: false });
+  if (data) emit({ sales: data.map(toSale) });
+}
+async function loadFees() {
+  const { data } = await supabase.from("fee_settings").select("*").eq("id", 1).maybeSingle();
+  if (data) emit({ fees: { pix: n(data.pix), debit: n(data.debit), credit: n(data.credit), installmentBase: n(data.installment_base), installmentPer: n(data.installment_per) } });
+}
+
+function start() {
+  if (started || typeof window === "undefined") return;
+  started = true;
+  Promise.all([loadProducts(), loadSales(), loadFees()]).then(() => emit({ ready: true }));
+  supabase
+    .channel("store-sync")
+    .on("postgres_changes", { event: "*", schema: "public", table: "products" }, loadProducts)
+    .on("postgres_changes", { event: "*", schema: "public", table: "sales" }, loadSales)
+    .on("postgres_changes", { event: "*", schema: "public", table: "fee_settings" }, loadFees)
+    .subscribe();
+}
+export function resetStore() {
+  supabase.removeAllChannels();
+  started = false;
+  state = empty;
   listeners.forEach((l) => l());
 }
 
 export function useStore() {
   return useSyncExternalStore(
     (l) => {
-      load();
+      start();
       listeners.add(l);
-      l();
       return () => listeners.delete(l);
     },
-    () => {
-      load();
-      return state;
-    },
+    () => state,
     () => empty,
   );
 }
 
-const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+export const realUnitCost = (cost: number, extra: number, qty: number) => cost + (qty > 0 ? extra / qty : 0);
 
-export function saveProduct(p: Omit<Product, "id"> & { id?: string }) {
-  load();
-  if (p.id) save({ ...state, products: state.products.map((x) => (x.id === p.id ? (p as Product) : x)) });
-  else save({ ...state, products: [...state.products, { ...p, id: uid() }] });
-}
-export function deleteProduct(id: string) {
-  load();
-  save({ ...state, products: state.products.filter((x) => x.id !== id) });
-}
-export function registerSale(productId: string, qty: number, payment: Payment) {
-  load();
-  const p = state.products.find((x) => x.id === productId);
-  if (!p || qty < 1 || qty > p.stock) return false;
-  const sale: Sale = {
-    id: uid(),
-    productId,
-    productName: p.name,
-    qty,
-    unitPrice: p.price,
-    unitCost: p.cost,
-    payment,
-    date: new Date().toISOString(),
+export async function saveProduct(p: Omit<Product, "id" | "realCost"> & { id?: string }) {
+  const row = {
+    name: p.name, category: p.category, photo: p.photo ?? null, stock: p.stock, min_stock: p.minStock,
+    cost: p.cost, purchase_extra: p.purchaseExtra, purchase_qty: Math.max(1, p.purchaseQty),
+    real_cost: realUnitCost(p.cost, p.purchaseExtra, p.purchaseQty), price: p.price,
   };
-  save({
-    products: state.products.map((x) => (x.id === productId ? { ...x, stock: x.stock - qty } : x)),
-    sales: [sale, ...state.sales],
-  });
-  return true;
+  const { error } = p.id ? await supabase.from("products").update(row).eq("id", p.id) : await supabase.from("products").insert(row);
+  if (error) throw error;
+  await loadProducts();
 }
+export async function deleteProduct(id: string) {
+  const { error } = await supabase.from("products").delete().eq("id", id);
+  if (error) throw error;
+  await loadProducts();
+}
+
+export function feeRate(pay: Payment, installments: number, f: Fees) {
+  switch (pay) {
+    case "Pix": return f.pix;
+    case "Débito": return f.debit;
+    case "Crédito": return f.credit;
+    case "Parcelado": return f.installmentBase + f.installmentPer * Math.max(0, installments - 2);
+    default: return 0;
+  }
+}
+
+export async function registerSale(input: {
+  productId: string; qty: number; payment: Payment; installments: number; channel: Channel;
+  shippingCost: number; shippingPaidBy: "cliente" | "loja" | null;
+}) {
+  const { error } = await supabase.rpc("register_sale", {
+    _product_id: input.productId, _qty: input.qty, _payment: input.payment,
+    _installments: input.payment === "Parcelado" ? input.installments : 1, _channel: input.channel,
+    _fee_rate: feeRate(input.payment, input.installments, state.fees),
+    _shipping_cost: input.shippingPaidBy ? input.shippingCost : 0, _shipping_paid_by: input.shippingPaidBy ?? "",
+  });
+  if (error) throw error;
+  await Promise.all([loadProducts(), loadSales()]);
+}
+
+export async function saveFees(f: Fees) {
+  const { error } = await supabase.from("fee_settings").update({
+    pix: f.pix, debit: f.debit, credit: f.credit, installment_base: f.installmentBase, installment_per: f.installmentPer,
+  }).eq("id", 1);
+  if (error) throw error;
+  await loadFees();
+}
+
+/** Lucro líquido de uma venda: receita − custo real − taxa − frete absorvido pela loja. */
+export const saleNet = (s: Sale) =>
+  s.qty * s.unitPrice - s.qty * s.unitCost - s.feeValue - (s.shippingPaidBy === "loja" ? s.shippingCost : 0);
 
 export type Status = "ok" | "low" | "out";
 export function stockStatus(p: Product): Status {
@@ -103,7 +163,7 @@ export function stockStatus(p: Product): Status {
   if (p.stock <= p.minStock) return "low";
   return "ok";
 }
-export const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+export const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 export function margin(cost: number, price: number) {
   const value = price - cost;
   const pct = price > 0 ? (value / price) * 100 : 0;

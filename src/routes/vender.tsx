@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Banknote, Check, CreditCard, Minus, Plus, QrCode, Search } from "lucide-react";
+import { Banknote, Check, CreditCard, Layers, Minus, Plus, QrCode, Search, Wallet } from "lucide-react";
 import { Shell } from "@/components/Shell";
-import { brl, registerSale, stockStatus, useStore, type Payment } from "@/lib/store";
+import { brl, CHANNELS, feeRate, registerSale, stockStatus, useStore, type Channel, type Payment } from "@/lib/store";
 
 export const Route = createFileRoute("/vender")({
   head: () => ({
@@ -18,12 +18,19 @@ export const Route = createFileRoute("/vender")({
 
 const pays: { k: Payment; icon: typeof QrCode }[] = [
   { k: "Pix", icon: QrCode },
-  { k: "Cartão", icon: CreditCard },
   { k: "Dinheiro", icon: Banknote },
+  { k: "Débito", icon: Wallet },
+  { k: "Crédito", icon: CreditCard },
+  { k: "Parcelado", icon: Layers },
 ];
 
 function Vender() {
-  const { products, sales } = useStore();
+  const { products, sales, fees } = useStore();
+  const [channel, setChannel] = useState<Channel>("Loja física");
+  const [inst, setInst] = useState(2);
+  const [ship, setShip] = useState<"none" | "cliente" | "loja">("none");
+  const [shipCost, setShipCost] = useState(0);
+  const [busy, setBusy] = useState(false);
   const [q, setQ] = useState("");
   const [sel, setSel] = useState<string | null>(null);
   const [qty, setQty] = useState(1);
@@ -35,13 +42,19 @@ function Vender() {
   const today = sales.filter((s) => new Date(s.date).toDateString() === new Date().toDateString());
 
   function confirm() {
-    if (!p) return;
-    if (registerSale(p.id, qty, pay)) {
-      setDone(`${qty}× ${p.name} · ${brl(qty * p.price)} no ${pay}`);
-      setSel(null);
-      setQty(1);
-      setTimeout(() => setDone(null), 3500);
-    }
+    if (!p || busy) return;
+    setBusy(true);
+    registerSale({ productId: p.id, qty, payment: pay, installments: inst, channel, shippingCost: shipCost, shippingPaidBy: ship === "none" ? null : ship })
+      .then(() => {
+        setDone(`${qty}× ${p.name} · ${brl(qty * p.price)} no ${pay}${pay === "Parcelado" ? ` ${inst}x` : ""} · ${channel}`);
+        setSel(null);
+        setQty(1);
+        setShip("none");
+        setShipCost(0);
+        setTimeout(() => setDone(null), 3500);
+      })
+      .catch(() => alert("Não foi possível registrar a venda (estoque insuficiente ou sem internet)."))
+      .finally(() => setBusy(false));
   }
 
   return (
@@ -99,19 +112,57 @@ function Vender() {
                 <span className="font-display text-3xl">{qty}</span>
                 <button aria-label="Mais" onClick={() => setQty(Math.min(p.stock, qty + 1))} className="rounded-xl bg-card p-3"><Plus /></button>
               </div>
-              <p className="mb-2 font-semibold text-muted-foreground">3. Pagamento</p>
-              <div className="mb-5 grid grid-cols-3 gap-2">
+              <p className="mb-2 font-semibold text-muted-foreground">3. Canal de venda</p>
+              <div className="mb-5 grid grid-cols-2 gap-2">
+                {CHANNELS.map((c) => (
+                  <button key={c} onClick={() => setChannel(c)} className={`rounded-2xl border-2 py-3 text-sm font-bold ${channel === c ? "border-primary bg-primary/10 text-primary" : "border-border"}`}>{c}</button>
+                ))}
+              </div>
+              <p className="mb-2 font-semibold text-muted-foreground">4. Pagamento</p>
+              <div className="mb-3 grid grid-cols-3 gap-2">
                 {pays.map(({ k, icon: I }) => (
                   <button key={k} onClick={() => setPay(k)} className={`flex flex-col items-center gap-1 rounded-2xl border-2 py-3 text-sm font-bold ${pay === k ? "border-primary bg-primary/10 text-primary" : "border-border"}`}>
                     <I className="h-6 w-6" /> {k}
                   </button>
                 ))}
               </div>
+              {pay === "Parcelado" && (
+                <label className="mb-3 flex items-center justify-between gap-2 rounded-2xl bg-secondary p-3">
+                  <span className="font-semibold">Parcelas</span>
+                  <select value={inst} onChange={(e) => setInst(Number(e.target.value))} className="rounded-xl border border-input bg-card px-3 py-2">
+                    {Array.from({ length: 11 }, (_, i) => i + 2).map((n) => <option key={n} value={n}>{n}x</option>)}
+                  </select>
+                </label>
+              )}
+              <p className="mb-2 font-semibold text-muted-foreground">5. Frete de envio</p>
+              <div className="mb-3 grid grid-cols-3 gap-2">
+                {([["none", "Sem frete"], ["cliente", "Cliente pagou"], ["loja", "Loja pagou"]] as const).map(([k, l]) => (
+                  <button key={k} onClick={() => setShip(k)} className={`rounded-2xl border-2 py-3 text-xs font-bold ${ship === k ? "border-primary bg-primary/10 text-primary" : "border-border"}`}>{l}</button>
+                ))}
+              </div>
+              {ship !== "none" && (
+                <label className="mb-3 block">
+                  <span className="mb-1 block text-sm font-semibold text-muted-foreground">Valor do frete R$</span>
+                  <input inputMode="decimal" defaultValue={shipCost || ""} onChange={(e) => setShipCost(Math.max(0, Number(e.target.value.replace(",", ".")) || 0))} className="inp" placeholder="0,00" />
+                </label>
+              )}
+              {(() => {
+                const total = qty * p.price;
+                const fee = total * feeRate(pay, inst, fees) / 100;
+                const net = total - qty * p.realCost - fee - (ship === "loja" ? shipCost : 0);
+                return (
+                  <div className="mb-4 space-y-1 rounded-2xl bg-secondary p-3 text-sm">
+                    <div className="flex justify-between"><span>Taxa da maquininha ({feeRate(pay, inst, fees).toFixed(2)}%)</span><span>−{brl(fee)}</span></div>
+                    {ship === "loja" && <div className="flex justify-between"><span>Frete pago pela loja</span><span>−{brl(shipCost)}</span></div>}
+                    <div className="flex justify-between font-bold"><span>Lucro líquido</span><span className={net >= 0 ? "text-ok" : "text-destructive"}>{brl(net)}</span></div>
+                  </div>
+                );
+              })()}
               <div className="mb-4 flex items-baseline justify-between">
                 <span className="text-muted-foreground">Total</span>
                 <span className="font-display text-3xl text-primary">{brl(qty * p.price)}</span>
               </div>
-              <button onClick={confirm} className="w-full rounded-2xl bg-accent py-4 text-lg font-bold text-accent-foreground shadow-warm">
+              <button onClick={confirm} disabled={busy} className="w-full disabled:opacity-60 rounded-2xl bg-accent py-4 text-lg font-bold text-accent-foreground shadow-warm">
                 Confirmar venda
               </button>
             </>
@@ -125,7 +176,7 @@ function Vender() {
           <ul className="divide-y divide-border rounded-2xl border border-border bg-card">
             {today.map((s) => (
               <li key={s.id} className="flex justify-between gap-2 p-3 text-sm">
-                <span className="truncate">{s.qty}× {s.productName} <span className="text-muted-foreground">· {s.payment} · {new Date(s.date).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span></span>
+                <span className="truncate">{s.qty}× {s.productName} <span className="text-muted-foreground">· {s.payment}{s.payment === "Parcelado" ? ` ${s.installments}x` : ""} · {s.channel} · {new Date(s.date).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span></span>
                 <span className="shrink-0 font-bold">{brl(s.qty * s.unitPrice)}</span>
               </li>
             ))}
