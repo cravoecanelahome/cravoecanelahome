@@ -25,7 +25,7 @@ const pays: { k: Payment; icon: typeof QrCode }[] = [
 ];
 
 function Vender() {
-  const { products, sales, fees } = useStore();
+  const { products, sales, fees, role } = useStore();
   const [channel, setChannel] = useState<Channel>("Loja física");
   const [inst, setInst] = useState(2);
   const [ship, setShip] = useState<"none" | "cliente" | "loja">("none");
@@ -75,7 +75,7 @@ function Vender() {
           </div>
           {products.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-border bg-card p-8 text-center text-muted-foreground">
-              Nenhum produto ainda. <Link to="/estoque" className="font-bold text-primary underline">Cadastrar no estoque</Link>
+              Nenhum produto ainda.{role === "admin" && <> <Link to="/estoque" className="font-bold text-primary underline">Cadastrar no estoque</Link></>}
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -146,7 +146,7 @@ function Vender() {
                   <input inputMode="decimal" defaultValue={shipCost || ""} onChange={(e) => setShipCost(Math.max(0, Number(e.target.value.replace(",", ".")) || 0))} className="inp" placeholder="0,00" />
                 </label>
               )}
-              {(() => {
+              {role === "admin" && (() => {
                 const total = qty * p.price;
                 const fee = total * feeRate(pay, inst, fees) / 100;
                 const net = total - qty * p.realCost - fee - (ship === "loja" ? shipCost : 0);

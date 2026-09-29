@@ -22,7 +22,8 @@ type Draft = Omit<Product, "id" | "realCost"> & { id?: string; realCost?: number
 const blank: Draft = { name: "", category: "Aromatizadores", stock: 0, minStock: 3, cost: 0, purchaseExtra: 0, purchaseQty: 1, price: 0 };
 
 function Estoque() {
-  const { products } = useStore();
+  const { products, role } = useStore();
+  const isAdmin = role === "admin";
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("Todas");
   const [editing, setEditing] = useState<Draft | null>(null);
@@ -35,9 +36,9 @@ function Estoque() {
     <Shell>
       <div className="mb-4 flex items-center justify-between gap-3">
         <h1 className="font-display text-3xl md:text-4xl">Estoque</h1>
-        <button onClick={() => setEditing({ ...blank })} className="flex shrink-0 items-center gap-2 rounded-full bg-primary px-5 py-3 font-bold text-primary-foreground shadow-warm">
+        {isAdmin && <button onClick={() => setEditing({ ...blank })} className="flex shrink-0 items-center gap-2 rounded-full bg-primary px-5 py-3 font-bold text-primary-foreground shadow-warm">
           <Plus className="h-5 w-5" /> Novo produto
-        </button>
+        </button>}
       </div>
       <div className="relative mb-3">
         <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
@@ -53,14 +54,14 @@ function Estoque() {
 
       {list.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center text-muted-foreground">
-          {products.length === 0 ? "Cadastre seu primeiro produto tocando em “Novo produto”." : "Nenhum produto encontrado."}
+          {products.length === 0 ? (isAdmin ? "Cadastre seu primeiro produto tocando em “Novo produto”." : "Nenhum produto cadastrado ainda.") : "Nenhum produto encontrado."}
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
           {list.map((p) => {
             const m = margin(p.realCost, p.price);
             return (
-              <button key={p.id} onClick={() => setEditing(p)} className="overflow-hidden rounded-2xl border border-border bg-card text-left transition hover:shadow-warm">
+              <button key={p.id} disabled={!isAdmin} onClick={() => isAdmin && setEditing(p)} className="overflow-hidden rounded-2xl border border-border bg-card text-left transition hover:shadow-warm">
                 <div className="aspect-square bg-secondary">
                   {p.photo ? <img src={p.photo} alt={p.name} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-muted-foreground"><Camera className="h-8 w-8" /></div>}
                 </div>
@@ -70,7 +71,7 @@ function Estoque() {
                   <p className="text-xs text-muted-foreground">{p.category} · {p.stock} un</p>
                   <div className="flex items-baseline justify-between gap-1">
                     <span className="font-display text-lg text-primary">{brl(p.price)}</span>
-                    <span className="text-xs font-bold text-ok">{m.pct.toFixed(0)}%</span>
+                    {isAdmin && <span className="text-xs font-bold text-ok">{m.pct.toFixed(0)}%</span>}
                   </div>
                 </div>
               </button>
@@ -78,7 +79,7 @@ function Estoque() {
           })}
         </div>
       )}
-      {editing && <ProductForm draft={editing} onClose={() => setEditing(null)} />}
+      {isAdmin && editing && <ProductForm draft={editing} onClose={() => setEditing(null)} />}
     </Shell>
   );
 }
