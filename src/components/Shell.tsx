@@ -1,6 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { LayoutDashboard, Package, ShoppingBag } from "lucide-react";
+import { LayoutDashboard, LogOut, Package, ShoppingBag } from "lucide-react";
+import { AuthGate } from "@/components/AuthGate";
+import { supabase } from "@/integrations/supabase/client";
 import type { Status } from "@/lib/store";
 
 const nav = [
@@ -11,6 +13,7 @@ const nav = [
 
 export function Shell({ children }: { children: ReactNode }) {
   return (
+    <AuthGate>
     <div className="min-h-screen bg-background pb-24 md:pb-10">
       <header className="border-b border-border bg-card/70 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4">
@@ -31,6 +34,9 @@ export function Shell({ children }: { children: ReactNode }) {
               </Link>
             ))}
           </nav>
+          <button onClick={() => supabase.auth.signOut()} aria-label="Sair" className="flex shrink-0 items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold text-muted-foreground">
+            <LogOut className="h-4 w-4" /> Sair
+          </button>
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
