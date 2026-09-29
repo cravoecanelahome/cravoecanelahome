@@ -38,7 +38,7 @@ function Dashboard() {
       e.qty += s.qty;
       e.total += s.qty * s.unitPrice;
       byProd.set(s.productId, e);
-      byPay[s.payment] += s.qty * s.unitPrice;
+      byPay[s.payment] = (byPay[s.payment] ?? 0) + s.qty * s.unitPrice;
     });
     const top = [...byProd.values()].sort((a, b) => b.qty - a.qty).slice(0, 5);
     return { m, revenue, cogs, profit: revenue - cogs, top, byPay };

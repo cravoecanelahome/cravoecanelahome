@@ -19,7 +19,7 @@ export const Route = createFileRoute("/estoque")({
 });
 
 type Draft = Omit<Product, "id"> & { id?: string };
-const blank: Draft = { name: "", category: CATEGORIES[0], stock: 0, minStock: 3, cost: 0, price: 0 };
+const blank: Draft = { name: "", category: "Aromatizadores", stock: 0, minStock: 3, cost: 0, price: 0 };
 
 function Estoque() {
   const { products } = useStore();
