@@ -38,10 +38,10 @@ function Dashboard() {
     const shipTotal = m.reduce((a, s) => a + (s.shippingPaidBy === "loja" ? s.shippingCost : 0), 0);
     const net = m.reduce((a, s) => a + saleNet(s), 0);
     m.forEach((s) => {
-      const e = byProd.get(s.productId) ?? { name: s.productName, qty: 0, total: 0 };
+      const e = byProd.get(s.productId ?? s.productName) ?? { name: s.productName, qty: 0, total: 0 };
       e.qty += s.qty;
       e.total += s.qty * s.unitPrice;
-      byProd.set(s.productId, e);
+      byProd.set(s.productId ?? s.productName, e);
       byPay[s.payment] = (byPay[s.payment] ?? 0) + s.qty * s.unitPrice;
       byChannel[s.channel] = (byChannel[s.channel] ?? 0) + s.qty * s.unitPrice;
     });
