@@ -1,0 +1,137 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { Banknote, Check, CreditCard, Minus, Plus, QrCode, Search } from "lucide-react";
+import { Shell } from "@/components/Shell";
+import { brl, registerSale, stockStatus, useStore, type Payment } from "@/lib/store";
+
+export const Route = createFileRoute("/vender")({
+  head: () => ({
+    meta: [
+      { title: "Registrar venda — Cravo & Canela Home" },
+      { name: "description", content: "Registre vendas em poucos toques com baixa automática no estoque." },
+      { property: "og:title", content: "Registrar venda — Cravo & Canela Home" },
+      { property: "og:description", content: "Venda rápida com Pix, cartão ou dinheiro." },
+    ],
+  }),
+  component: Vender,
+});
+
+const pays: { k: Payment; icon: typeof QrCode }[] = [
+  { k: "Pix", icon: QrCode },
+  { k: "Cartão", icon: CreditCard },
+  { k: "Dinheiro", icon: Banknote },
+];
+
+function Vender() {
+  const { products, sales } = useStore();
+  const [q, setQ] = useState("");
+  const [sel, setSel] = useState<string | null>(null);
+  const [qty, setQty] = useState(1);
+  const [pay, setPay] = useState<Payment>("Pix");
+  const [done, setDone] = useState<string | null>(null);
+
+  const p = products.find((x) => x.id === sel);
+  const list = products.filter((x) => x.name.toLowerCase().includes(q.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name));
+  const today = sales.filter((s) => new Date(s.date).toDateString() === new Date().toDateString());
+
+  function confirm() {
+    if (!p) return;
+    if (registerSale(p.id, qty, pay)) {
+      setDone(`${qty}× ${p.name} · ${brl(qty * p.price)} no ${pay}`);
+      setSel(null);
+      setQty(1);
+      setTimeout(() => setDone(null), 3500);
+    }
+  }
+
+  return (
+    <Shell>
+      <h1 className="mb-4 font-display text-3xl md:text-4xl">Registrar venda</h1>
+      {done && (
+        <div className="mb-4 flex items-center gap-3 rounded-2xl bg-ok p-4 font-semibold text-primary-foreground">
+          <Check className="h-6 w-6 shrink-0" /> Venda registrada! {done}
+        </div>
+      )}
+
+      <div className="grid gap-5 md:grid-cols-[1fr_380px]">
+        <section>
+          <p className="mb-2 font-semibold text-muted-foreground">1. Escolha o produto</p>
+          <div className="relative mb-3">
+            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar..." className="inp !pl-12" />
+          </div>
+          {products.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-border bg-card p-8 text-center text-muted-foreground">
+              Nenhum produto ainda. <Link to="/estoque" className="font-bold text-primary underline">Cadastrar no estoque</Link>
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {list.map((x) => {
+                const out = stockStatus(x) === "out";
+                return (
+                  <button key={x.id} disabled={out} onClick={() => { setSel(x.id); setQty(1); }}
+                    className={`flex items-center gap-2 rounded-2xl border-2 bg-card p-2 text-left disabled:opacity-40 ${sel === x.id ? "border-primary" : "border-transparent"}`}>
+                    <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-secondary">
+                      {x.photo && <img src={x.photo} alt="" className="h-full w-full object-cover" />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{x.name}</p>
+                      <p className="text-sm text-primary">{brl(x.price)}</p>
+                      <p className="text-xs text-muted-foreground">{out ? "Esgotado" : `${x.stock} em estoque`}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <aside className="h-fit rounded-3xl border border-border bg-card p-5 md:sticky md:top-4">
+          {!p ? (
+            <p className="py-6 text-center text-muted-foreground">Toque em um produto para começar.</p>
+          ) : (
+            <>
+              <p className="truncate font-display text-2xl">{p.name}</p>
+              <p className="mb-4 text-muted-foreground">{brl(p.price)} cada</p>
+              <p className="mb-2 font-semibold text-muted-foreground">2. Quantidade</p>
+              <div className="mb-5 flex items-center justify-between rounded-2xl bg-secondary p-2">
+                <button aria-label="Menos" onClick={() => setQty(Math.max(1, qty - 1))} className="rounded-xl bg-card p-3"><Minus /></button>
+                <span className="font-display text-3xl">{qty}</span>
+                <button aria-label="Mais" onClick={() => setQty(Math.min(p.stock, qty + 1))} className="rounded-xl bg-card p-3"><Plus /></button>
+              </div>
+              <p className="mb-2 font-semibold text-muted-foreground">3. Pagamento</p>
+              <div className="mb-5 grid grid-cols-3 gap-2">
+                {pays.map(({ k, icon: I }) => (
+                  <button key={k} onClick={() => setPay(k)} className={`flex flex-col items-center gap-1 rounded-2xl border-2 py-3 text-sm font-bold ${pay === k ? "border-primary bg-primary/10 text-primary" : "border-border"}`}>
+                    <I className="h-6 w-6" /> {k}
+                  </button>
+                ))}
+              </div>
+              <div className="mb-4 flex items-baseline justify-between">
+                <span className="text-muted-foreground">Total</span>
+                <span className="font-display text-3xl text-primary">{brl(qty * p.price)}</span>
+              </div>
+              <button onClick={confirm} className="w-full rounded-2xl bg-accent py-4 text-lg font-bold text-accent-foreground shadow-warm">
+                Confirmar venda
+              </button>
+            </>
+          )}
+        </aside>
+      </div>
+
+      <section className="mt-8">
+        <h2 className="mb-3 font-display text-2xl">Vendas de hoje</h2>
+        {today.length === 0 ? <p className="text-muted-foreground">Nenhuma venda hoje ainda.</p> : (
+          <ul className="divide-y divide-border rounded-2xl border border-border bg-card">
+            {today.map((s) => (
+              <li key={s.id} className="flex justify-between gap-2 p-3 text-sm">
+                <span className="truncate">{s.qty}× {s.productName} <span className="text-muted-foreground">· {s.payment} · {new Date(s.date).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span></span>
+                <span className="shrink-0 font-bold">{brl(s.qty * s.unitPrice)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </Shell>
+  );
+}
