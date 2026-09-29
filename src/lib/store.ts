@@ -37,11 +37,13 @@ export type Fees = { pix: number; debit: number; credit: number; installmentBase
 
 export const CATEGORIES = ["Aromatizadores", "Velas", "Vasos", "Decoração", "Presentes", "Outros"];
 
-type State = { products: Product[]; sales: Sale[]; fees: Fees; ready: boolean };
+export type Role = "admin" | "vendedor";
+type State = { products: Product[]; sales: Sale[]; fees: Fees; ready: boolean; role: Role | null };
 const defaultFees: Fees = { pix: 0, debit: 1.99, credit: 3.49, installmentBase: 4.99, installmentPer: 1.5 };
-const empty: State = { products: [], sales: [], fees: defaultFees, ready: false };
+const empty: State = { products: [], sales: [], fees: defaultFees, ready: false, role: null };
 let state: State = empty;
 let started = false;
+let poll: ReturnType<typeof setInterval> | null = null;
 const listeners = new Set<() => void>();
 const emit = (patch: Partial<State>) => {
   state = { ...state, ...patch };
@@ -52,40 +54,61 @@ const emit = (patch: Partial<State>) => {
 const n = (v: any) => Number(v) || 0;
 const toProduct = (r: any): Product => ({
   id: r.id, name: r.name, category: r.category, photo: r.photo, stock: r.stock, minStock: r.min_stock,
-  cost: n(r.cost), purchaseExtra: n(r.purchase_extra), purchaseQty: r.purchase_qty, realCost: n(r.real_cost), price: n(r.price),
+  cost: n(r.cost), purchaseExtra: n(r.purchase_extra), purchaseQty: r.purchase_qty ?? 1, realCost: n(r.real_cost), price: n(r.price),
 });
 const toSale = (r: any): Sale => ({
-  id: r.id, productId: r.product_id, productName: r.product_name, qty: r.qty, unitPrice: n(r.unit_price),
+  id: r.id, productId: r.product_id ?? null, productName: r.product_name, qty: r.qty, unitPrice: n(r.unit_price),
   unitCost: n(r.unit_cost), payment: r.payment, installments: r.installments, channel: r.channel,
-  feeValue: n(r.fee_value), shippingCost: n(r.shipping_cost), shippingPaidBy: r.shipping_paid_by, date: r.created_at,
+  feeValue: n(r.fee_value), shippingCost: n(r.shipping_cost), shippingPaidBy: r.shipping_paid_by ?? null, date: r.created_at,
 });
 
 async function loadProducts() {
+  if (state.role === "vendedor") {
+    const { data } = await supabase.rpc("catalog" as any);
+    if (data) emit({ products: (data as any[]).map(toProduct) });
+    return;
+  }
   const { data } = await supabase.from("products").select("*").order("name");
   if (data) emit({ products: data.map(toProduct) });
 }
 async function loadSales() {
+  if (state.role === "vendedor") {
+    const { data } = await supabase.rpc("today_sales" as any);
+    if (data) emit({ sales: (data as any[]).map(toSale) });
+    return;
+  }
   const { data } = await supabase.from("sales").select("*").order("created_at", { ascending: false });
   if (data) emit({ sales: data.map(toSale) });
 }
 async function loadFees() {
+  if (state.role !== "admin") return;
   const { data } = await supabase.from("fee_settings").select("*").eq("id", 1).maybeSingle();
   if (data) emit({ fees: { pix: n(data.pix), debit: n(data.debit), credit: n(data.credit), installmentBase: n(data.installment_base), installmentPer: n(data.installment_per) } });
 }
 
-function start() {
+async function start() {
   if (started || typeof window === "undefined") return;
   started = true;
-  Promise.all([loadProducts(), loadSales(), loadFees()]).then(() => emit({ ready: true }));
-  supabase
-    .channel("store-sync")
-    .on("postgres_changes", { event: "*", schema: "public", table: "products" }, loadProducts)
-    .on("postgres_changes", { event: "*", schema: "public", table: "sales" }, loadSales)
-    .on("postgres_changes", { event: "*", schema: "public", table: "fee_settings" }, loadFees)
-    .subscribe();
+  const { data: role } = await supabase.rpc("current_app_role" as any);
+  emit({ role: (role as Role | null) ?? null });
+  if (!role) return emit({ ready: true });
+  await Promise.all([loadProducts(), loadSales(), loadFees()]);
+  emit({ ready: true });
+  if (role === "admin") {
+    supabase
+      .channel("store-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, loadProducts)
+      .on("postgres_changes", { event: "*", schema: "public", table: "sales" }, loadSales)
+      .on("postgres_changes", { event: "*", schema: "public", table: "fee_settings" }, loadFees)
+      .subscribe();
+  } else {
+    poll = setInterval(() => { loadProducts(); loadSales(); }, 20000);
+  }
 }
 export function resetStore() {
   supabase.removeAllChannels();
+  if (poll) clearInterval(poll);
+  poll = null;
   started = false;
   state = empty;
   listeners.forEach((l) => l());

@@ -53,7 +53,7 @@ function Dashboard() {
   const maxQty = data.top[0]?.qty ?? 1;
 
   return (
-    <Shell>
+    <Shell adminOnly>
       <div className="mb-6 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-muted-foreground">Olá, Valdirene</p>

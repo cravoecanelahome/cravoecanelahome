@@ -160,11 +160,55 @@ export type Database = {
           },
         ]
       }
+      team_members: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          name?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      catalog: {
+        Args: never
+        Returns: {
+          category: string
+          id: string
+          min_stock: number
+          name: string
+          photo: string
+          price: number
+          stock: number
+        }[]
+      }
+      current_app_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      is_admin: { Args: never; Returns: boolean }
       register_sale: {
         Args: {
           _channel: string
@@ -178,9 +222,22 @@ export type Database = {
         }
         Returns: string
       }
+      today_sales: {
+        Args: never
+        Returns: {
+          channel: string
+          created_at: string
+          id: string
+          installments: number
+          payment: string
+          product_name: string
+          qty: number
+          unit_price: number
+        }[]
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "vendedor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -307,6 +364,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "vendedor"],
+    },
   },
 } as const

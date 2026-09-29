@@ -1,25 +1,37 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { LayoutDashboard, LogOut, Package, ShoppingBag } from "lucide-react";
+import { LayoutDashboard, LogOut, Package, ShoppingBag, Users } from "lucide-react";
 import { AuthGate } from "@/components/AuthGate";
 import { supabase } from "@/integrations/supabase/client";
-import type { Status } from "@/lib/store";
+import { useStore, type Role, type Status } from "@/lib/store";
 
-const nav = [
-  { to: "/", label: "Painel", icon: LayoutDashboard },
-  { to: "/estoque", label: "Estoque", icon: Package },
-  { to: "/vender", label: "Vender", icon: ShoppingBag },
+const allNav = [
+  { to: "/", label: "Painel", icon: LayoutDashboard, admin: true },
+  { to: "/estoque", label: "Estoque", icon: Package, admin: false },
+  { to: "/vender", label: "Vender", icon: ShoppingBag, admin: false },
+  { to: "/equipe", label: "Equipe", icon: Users, admin: true },
 ] as const;
 
-export function Shell({ children }: { children: ReactNode }) {
+export function Shell({ children, adminOnly }: { children: ReactNode; adminOnly?: boolean | undefined }) {
   return (
     <AuthGate>
+      <Inner adminOnly={adminOnly}>{children}</Inner>
+    </AuthGate>
+  );
+}
+
+function Inner({ children, adminOnly }: { children: ReactNode; adminOnly?: boolean | undefined }) {
+  const { ready, role } = useStore();
+  const nav = allNav.filter((n) => role === "admin" || !n.admin);
+  if (!ready) return <div className="grid min-h-screen place-items-center bg-background text-muted-foreground">Carregando…</div>;
+  if (!role) return <NoAccess />;
+  return (
     <div className="min-h-screen bg-background pb-24 md:pb-10">
       <header className="border-b border-border bg-card/70 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4">
-          <Link to="/" className="min-w-0">
+          <Link to={role === "admin" ? "/" : "/vender"} className="min-w-0">
             <p className="truncate font-display text-2xl text-primary">Cravo & Canela</p>
-            <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Home</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Home · {role === "admin" ? "Administrador" : "Vendedor"}</p>
           </Link>
           <nav className="hidden gap-2 md:flex">
             {nav.map((n) => (
@@ -39,8 +51,10 @@ export function Shell({ children }: { children: ReactNode }) {
           </button>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-border bg-card md:hidden">
+      <main className="mx-auto max-w-6xl px-4 py-6">
+        {adminOnly && role !== "admin" ? <Restricted role={role} /> : children}
+      </main>
+      <nav className={`fixed inset-x-0 bottom-0 z-40 grid border-t border-border bg-card md:hidden ${nav.length === 4 ? "grid-cols-4" : "grid-cols-2"}`}>
         {nav.map((n) => (
           <Link
             key={n.to}
@@ -54,7 +68,27 @@ export function Shell({ children }: { children: ReactNode }) {
         ))}
       </nav>
     </div>
-    </AuthGate>
+  );
+}
+
+function Restricted({ role }: { role: Role }) {
+  return (
+    <div className="rounded-3xl border border-border bg-card p-8 text-center">
+      <p className="mb-4 font-display text-2xl">Área exclusiva de administradores</p>
+      {role === "vendedor" && <Link to="/vender" className="inline-block rounded-2xl bg-primary px-6 py-3 font-bold text-primary-foreground">Ir para Vender</Link>}
+    </div>
+  );
+}
+
+function NoAccess() {
+  return (
+    <div className="grid min-h-screen place-items-center bg-background px-4">
+      <div className="max-w-sm rounded-3xl border border-border bg-card p-6 text-center">
+        <p className="mb-2 font-display text-2xl">Sem acesso</p>
+        <p className="mb-4 text-muted-foreground">Este e-mail não faz parte da equipe. Peça a um administrador para liberar seu acesso.</p>
+        <button onClick={() => supabase.auth.signOut()} className="w-full rounded-2xl bg-primary py-3 font-bold text-primary-foreground">Sair</button>
+      </div>
+    </div>
   );
 }
 
