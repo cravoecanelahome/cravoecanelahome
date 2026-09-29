@@ -139,7 +139,7 @@ export async function registerSale(input: {
     _product_id: input.productId, _qty: input.qty, _payment: input.payment,
     _installments: input.payment === "Parcelado" ? input.installments : 1, _channel: input.channel,
     _fee_rate: feeRate(input.payment, input.installments, state.fees),
-    _shipping_cost: input.shippingPaidBy ? input.shippingCost : 0, _shipping_paid_by: input.shippingPaidBy,
+    _shipping_cost: input.shippingPaidBy ? input.shippingCost : 0, _shipping_paid_by: input.shippingPaidBy ?? "",
   });
   if (error) throw error;
   await Promise.all([loadProducts(), loadSales()]);
