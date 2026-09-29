@@ -12,7 +12,7 @@ const allNav = [
   { to: "/equipe", label: "Equipe", icon: Users, admin: true },
 ] as const;
 
-export function Shell({ children, adminOnly }: { children: ReactNode; adminOnly?: boolean }) {
+export function Shell({ children, adminOnly }: { children: ReactNode; adminOnly?: boolean | undefined }) {
   return (
     <AuthGate>
       <Inner adminOnly={adminOnly}>{children}</Inner>
@@ -20,7 +20,7 @@ export function Shell({ children, adminOnly }: { children: ReactNode; adminOnly?
   );
 }
 
-function Inner({ children, adminOnly }: { children: ReactNode; adminOnly?: boolean }) {
+function Inner({ children, adminOnly }: { children: ReactNode; adminOnly?: boolean | undefined }) {
   const { ready, role } = useStore();
   const nav = allNav.filter((n) => role === "admin" || !n.admin);
   if (!ready) return <div className="grid min-h-screen place-items-center bg-background text-muted-foreground">Carregando…</div>;

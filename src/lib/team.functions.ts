@@ -25,9 +25,9 @@ async function findUserId(email: string) {
 /** Envia convite (1º acesso) ou link de nova senha — só para e-mails autorizados pela equipe. */
 async function sendAccessLink(email: string) {
   const a = await admin();
-  const redirectTo = redirectUrl();
-  const { error } = await a.auth.admin.inviteUserByEmail(email, { redirectTo });
-  if (error) await a.auth.resetPasswordForEmail(email, { redirectTo });
+  const r = redirectUrl(); const opts = r ? { redirectTo: r } : {};
+  const { error } = await a.auth.admin.inviteUserByEmail(email, opts);
+  if (error) await a.auth.resetPasswordForEmail(email, opts);
 }
 
 export const requestAccess = createServerFn({ method: "POST" })
