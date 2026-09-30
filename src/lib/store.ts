@@ -32,15 +32,17 @@ export type Sale = {
   shippingCost: number;
   shippingPaidBy: "cliente" | "loja" | null;
   date: string;
+  customerId: string | null;
 };
+export type Customer = { id: string; name: string; whatsapp: string | null; birthday: string | null; address: string | null; notes: string | null };
 export type Fees = { pix: number; debit: number; credit: number; installmentBase: number; installmentPer: number };
 
 export const CATEGORIES = ["Aromatizadores", "Velas", "Vasos", "Decoração", "Presentes", "Outros"];
 
 export type Role = "admin" | "vendedor";
-type State = { products: Product[]; sales: Sale[]; fees: Fees; ready: boolean; role: Role | null };
+type State = { products: Product[]; sales: Sale[]; customers: Customer[]; fees: Fees; ready: boolean; role: Role | null };
 const defaultFees: Fees = { pix: 0, debit: 1.99, credit: 3.49, installmentBase: 4.99, installmentPer: 1.5 };
-const empty: State = { products: [], sales: [], fees: defaultFees, ready: false, role: null };
+const empty: State = { products: [], sales: [], customers: [], fees: defaultFees, ready: false, role: null };
 let state: State = empty;
 let started = false;
 let poll: ReturnType<typeof setInterval> | null = null;
@@ -59,7 +61,7 @@ const toProduct = (r: any): Product => ({
 const toSale = (r: any): Sale => ({
   id: r.id, productId: r.product_id ?? null, productName: r.product_name, qty: r.qty, unitPrice: n(r.unit_price),
   unitCost: n(r.unit_cost), payment: r.payment, installments: r.installments, channel: r.channel,
-  feeValue: n(r.fee_value), shippingCost: n(r.shipping_cost), shippingPaidBy: r.shipping_paid_by ?? null, date: r.created_at,
+  feeValue: n(r.fee_value), shippingCost: n(r.shipping_cost), shippingPaidBy: r.shipping_paid_by ?? null, date: r.created_at, customerId: r.customer_id ?? null,
 });
 
 async function loadProducts() {
@@ -80,6 +82,10 @@ async function loadSales() {
   const { data } = await supabase.from("sales").select("*").order("created_at", { ascending: false });
   if (data) emit({ sales: data.map(toSale) });
 }
+async function loadCustomers() {
+  const { data } = await supabase.from("customers").select("id,name,whatsapp,birthday,address,notes").order("name");
+  if (data) emit({ customers: data as Customer[] });
+}
 async function loadFees() {
   if (state.role !== "admin") return;
   const { data } = await supabase.from("fee_settings").select("*").eq("id", 1).maybeSingle();
@@ -92,8 +98,11 @@ async function start() {
   const { data: role } = await supabase.rpc("current_app_role" as any);
   emit({ role: (role as Role | null) ?? null });
   if (!role) return emit({ ready: true });
-  await Promise.all([loadProducts(), loadSales(), loadFees()]);
+  await Promise.all([loadProducts(), loadSales(), loadFees(), loadCustomers()]);
   emit({ ready: true });
+  supabase.channel("customers-sync")
+    .on("postgres_changes", { event: "*", schema: "public", table: "customers" }, loadCustomers)
+    .subscribe();
   if (role === "admin") {
     supabase
       .channel("store-sync")
@@ -156,13 +165,14 @@ export function feeRate(pay: Payment, installments: number, f: Fees) {
 
 export async function registerSale(input: {
   productId: string; qty: number; payment: Payment; installments: number; channel: Channel;
-  shippingCost: number; shippingPaidBy: "cliente" | "loja" | null;
+  shippingCost: number; shippingPaidBy: "cliente" | "loja" | null; customerId?: string | null;
 }) {
   const { error } = await supabase.rpc("register_sale", {
     _product_id: input.productId, _qty: input.qty, _payment: input.payment,
     _installments: input.payment === "Parcelado" ? input.installments : 1, _channel: input.channel,
     _fee_rate: feeRate(input.payment, input.installments, state.fees),
     _shipping_cost: input.shippingPaidBy ? input.shippingCost : 0, _shipping_paid_by: input.shippingPaidBy ?? "",
+    ...(input.customerId ? { _customer_id: input.customerId } : {}),
   });
   if (error) throw error;
   await Promise.all([loadProducts(), loadSales()]);
@@ -212,3 +222,25 @@ export function resizeImage(file: File, max = 480): Promise<string> {
     r.readAsDataURL(file);
   });
 }
+
+export async function saveCustomer(c: Omit<Customer, "id"> & { id?: string }): Promise<Customer> {
+  const row = { name: c.name.trim(), whatsapp: c.whatsapp || null, birthday: c.birthday || null, address: c.address || null, notes: c.notes || null };
+  const res = c.id
+    ? await supabase.from("customers").update(row).eq("id", c.id).select("id,name,whatsapp,birthday,address,notes").single()
+    : await supabase.from("customers").insert(row).select("id,name,whatsapp,birthday,address,notes").single();
+  if (res.error) throw res.error;
+  await loadCustomers();
+  return res.data as Customer;
+}
+export async function deleteCustomer(id: string) {
+  const { error } = await supabase.from("customers").delete().eq("id", id);
+  if (error) throw error;
+  await loadCustomers();
+}
+export type HistoryItem = { id: string; product_name: string; qty: number; unit_price: number; payment: string; channel: string; created_at: string };
+export async function customerHistory(id: string): Promise<HistoryItem[]> {
+  const { data, error } = await supabase.rpc("customer_history" as any, { _customer_id: id } as any);
+  if (error) throw error;
+  return (data as HistoryItem[]) ?? [];
+}
+export const onlyDigits = (v: string) => v.replace(/\D/g, "");

@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { LayoutDashboard, LogOut, Package, ShoppingBag, Users } from "lucide-react";
+import { LayoutDashboard, LogOut, Package, ShoppingBag, Users, Contact } from "lucide-react";
 import { AuthGate } from "@/components/AuthGate";
 import { supabase } from "@/integrations/supabase/client";
 import { useStore, type Role, type Status } from "@/lib/store";
@@ -9,6 +9,7 @@ const allNav = [
   { to: "/", label: "Painel", icon: LayoutDashboard, admin: true },
   { to: "/estoque", label: "Estoque", icon: Package, admin: false },
   { to: "/vender", label: "Vender", icon: ShoppingBag, admin: false },
+  { to: "/clientes", label: "Clientes", icon: Contact, admin: false },
   { to: "/equipe", label: "Equipe", icon: Users, admin: true },
 ] as const;
 
@@ -54,13 +55,13 @@ function Inner({ children, adminOnly }: { children: ReactNode; adminOnly?: boole
       <main className="mx-auto max-w-6xl px-4 py-6">
         {adminOnly && role !== "admin" ? <Restricted role={role} /> : children}
       </main>
-      <nav className={`fixed inset-x-0 bottom-0 z-40 grid border-t border-border bg-card md:hidden ${nav.length === 4 ? "grid-cols-4" : "grid-cols-2"}`}>
+      <nav className={`fixed inset-x-0 bottom-0 z-40 grid border-t border-border bg-card md:hidden ${nav.length === 5 ? "grid-cols-5" : "grid-cols-3"}`}>
         {nav.map((n) => (
           <Link
             key={n.to}
             to={n.to}
             activeOptions={{ exact: true }}
-            className="flex flex-col items-center gap-1 py-3 text-sm font-semibold text-muted-foreground"
+            className="flex flex-col items-center gap-1 py-3 text-xs font-semibold text-muted-foreground"
             activeProps={{ className: "!text-primary" }}
           >
             <n.icon className="h-6 w-6" /> {n.label}
