@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Banknote, Check, CreditCard, Layers, Minus, Plus, QrCode, Search, Wallet } from "lucide-react";
+import { Banknote, Check, CreditCard, Layers, Minus, Plus, QrCode, Search, Wallet, UserPlus, User, X } from "lucide-react";
 import { Shell } from "@/components/Shell";
-import { brl, CHANNELS, feeRate, registerSale, stockStatus, useStore, type Channel, type Payment } from "@/lib/store";
+import { CustomerForm, Modal } from "@/components/CustomerForm";
+import { onlyDigits, brl, CHANNELS, feeRate, registerSale, stockStatus, useStore, type Channel, type Payment } from "@/lib/store";
 
 export const Route = createFileRoute("/vender")({
   head: () => ({
@@ -25,7 +26,10 @@ const pays: { k: Payment; icon: typeof QrCode }[] = [
 ];
 
 function Vender() {
-  const { products, sales, fees, role } = useStore();
+  const { products, sales, fees, role, customers } = useStore();
+  const [cust, setCust] = useState<string | null>(null);
+  const [cq, setCq] = useState("");
+  const [newCust, setNewCust] = useState(false);
   const [channel, setChannel] = useState<Channel>("Loja física");
   const [inst, setInst] = useState(2);
   const [ship, setShip] = useState<"none" | "cliente" | "loja">("none");
@@ -44,21 +48,51 @@ function Vender() {
   function confirm() {
     if (!p || busy) return;
     setBusy(true);
-    registerSale({ productId: p.id, qty, payment: pay, installments: inst, channel, shippingCost: shipCost, shippingPaidBy: ship === "none" ? null : ship })
+    registerSale({ productId: p.id, qty, payment: pay, installments: inst, channel, shippingCost: shipCost, shippingPaidBy: ship === "none" ? null : ship, customerId: cust })
       .then(() => {
         setDone(`${qty}× ${p.name} · ${brl(qty * p.price)} no ${pay}${pay === "Parcelado" ? ` ${inst}x` : ""} · ${channel}`);
         setSel(null);
         setQty(1);
         setShip("none");
         setShipCost(0);
+        setCust(null);
         setTimeout(() => setDone(null), 3500);
       })
       .catch(() => alert("Não foi possível registrar a venda (estoque insuficiente ou sem internet)."))
       .finally(() => setBusy(false));
   }
 
+  const chosen = customers.find((c) => c.id === cust);
+  const cqd = onlyDigits(cq);
+  const matches = cq.trim() ? customers.filter((c) => c.name.toLowerCase().includes(cq.toLowerCase()) || (cqd && onlyDigits(c.whatsapp ?? "").includes(cqd))).slice(0, 5) : [];
+  const CustomerPick = () => chosen ? (
+    <div className="mb-4 flex items-center justify-between gap-2 rounded-2xl bg-secondary p-3">
+      <span className="flex min-w-0 items-center gap-2 font-semibold"><User className="h-5 w-5 shrink-0" /><span className="truncate">{chosen.name}</span></span>
+      <button aria-label="Remover cliente" onClick={() => setCust(null)} className="rounded-xl bg-card p-2"><X className="h-4 w-4" /></button>
+    </div>
+  ) : (
+    <div className="mb-4">
+      <div className="flex gap-2">
+        <input value={cq} onChange={(e) => setCq(e.target.value)} placeholder="Nome ou WhatsApp (ou deixe avulsa)" className="inp" />
+        <button aria-label="Cadastrar cliente" onClick={() => setNewCust(true)} className="shrink-0 rounded-2xl border-2 border-border px-3"><UserPlus className="h-5 w-5" /></button>
+      </div>
+      {matches.length > 0 && (
+        <ul className="mt-1 divide-y divide-border rounded-2xl border border-border">
+          {matches.map((c) => (
+            <li key={c.id}><button onClick={() => { setCust(c.id); setCq(""); }} className="w-full p-3 text-left text-sm"><b>{c.name}</b> <span className="text-muted-foreground">{c.whatsapp}</span></button></li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+
   return (
     <Shell>
+      {newCust && (
+        <Modal title="Cadastro rápido" onClose={() => setNewCust(false)}>
+          <CustomerForm initial={{ name: onlyDigits(cq) ? "" : cq, whatsapp: onlyDigits(cq) ? cq : "" }} onCancel={() => setNewCust(false)} onDone={(c) => { setCust(c.id); setCq(""); setNewCust(false); }} />
+        </Modal>
+      )}
       <h1 className="mb-4 font-display text-3xl md:text-4xl">Registrar venda</h1>
       {done && (
         <div className="mb-4 flex items-center gap-3 rounded-2xl bg-ok p-4 font-semibold text-primary-foreground">
@@ -146,6 +180,8 @@ function Vender() {
                   <input inputMode="decimal" defaultValue={shipCost || ""} onChange={(e) => setShipCost(Math.max(0, Number(e.target.value.replace(",", ".")) || 0))} className="inp" placeholder="0,00" />
                 </label>
               )}
+              <p className="mb-2 font-semibold text-muted-foreground">6. Cliente (opcional)</p>
+              {CustomerPick()}
               {role === "admin" && (() => {
                 const total = qty * p.price;
                 const fee = total * feeRate(pay, inst, fees) / 100;

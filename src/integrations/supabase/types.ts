@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      customers: {
+        Row: {
+          address: string | null
+          birthday: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          notes: string | null
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          address?: string | null
+          birthday?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          address?: string | null
+          birthday?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
       fee_settings: {
         Row: {
           created_at: string
@@ -100,6 +136,7 @@ export type Database = {
           channel: string
           created_at: string
           created_by: string | null
+          customer_id: string | null
           fee_rate: number
           fee_value: number
           id: string
@@ -118,6 +155,7 @@ export type Database = {
           channel?: string
           created_at?: string
           created_by?: string | null
+          customer_id?: string | null
           fee_rate?: number
           fee_value?: number
           id?: string
@@ -136,6 +174,7 @@ export type Database = {
           channel?: string
           created_at?: string
           created_by?: string | null
+          customer_id?: string | null
           fee_rate?: number
           fee_value?: number
           id?: string
@@ -151,6 +190,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "sales_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sales_product_id_fkey"
             columns: ["product_id"]
@@ -208,10 +254,23 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      customer_history: {
+        Args: { _customer_id: string }
+        Returns: {
+          channel: string
+          created_at: string
+          id: string
+          payment: string
+          product_name: string
+          qty: number
+          unit_price: number
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
       register_sale: {
         Args: {
           _channel: string
+          _customer_id?: string
           _fee_rate: number
           _installments: number
           _payment: string
