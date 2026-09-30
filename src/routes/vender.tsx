@@ -181,7 +181,7 @@ function Vender() {
                 </label>
               )}
               <p className="mb-2 font-semibold text-muted-foreground">6. Cliente (opcional)</p>
-              <CustomerPick />
+              {CustomerPick()}
               {role === "admin" && (() => {
                 const total = qty * p.price;
                 const fee = total * feeRate(pay, inst, fees) / 100;
