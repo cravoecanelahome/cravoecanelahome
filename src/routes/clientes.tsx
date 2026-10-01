@@ -4,6 +4,7 @@ import { Cake, MessageCircle, Plus, Search } from "lucide-react";
 import { Shell } from "@/components/Shell";
 import { CustomerForm, Modal } from "@/components/CustomerForm";
 import { Button } from "@/components/ui/button";
+import { formatPhone } from "@/lib/customer-fields";
 import { brl, customerAddress, customerHistory, deleteCustomer, onlyDigits, useStore, type Customer, type HistoryItem } from "@/lib/store";
 
 export const Route = createFileRoute("/clientes")({
@@ -58,7 +59,7 @@ function Clientes() {
             <li key={c.id}>
                <Button variant="outline" onClick={() => setOpen(c)} className="h-auto w-full flex-col items-start gap-1 whitespace-normal p-4 text-left">
                 <p className="font-semibold">{c.name}</p>
-                 <p className="text-sm text-muted-foreground">{[c.whatsapp, customerAddress(c), c.birthday && `🎂 ${bday(c.birthday)}`].filter(Boolean).join(" · ")}</p>
+                 <p className="text-sm text-muted-foreground">{[c.whatsapp && formatPhone(c.whatsapp), customerAddress(c), c.birthday && `🎂 ${bday(c.birthday)}`].filter(Boolean).join(" · ")}</p>
                </Button>
             </li>
           ))}
@@ -82,13 +83,13 @@ function Detail({ c, admin, onClose, onEdit }: { c: Customer; admin: boolean; on
   return (
     <Modal title={c.name} onClose={onClose}>
       <div className="mb-4 space-y-1 text-sm">
-        {c.whatsapp && <p><b>WhatsApp:</b> {c.whatsapp}</p>}
+         {c.whatsapp && <p><b>WhatsApp:</b> {formatPhone(c.whatsapp)}</p>}
         {c.birthday && <p><b>Aniversário:</b> {bday(c.birthday)}</p>}
          {customerAddress(c) && <p><b>Endereço:</b> {customerAddress(c)}</p>}
         {c.notes && <p className="whitespace-pre-wrap"><b>Gostos:</b> {c.notes}</p>}
       </div>
       <div className="mb-4 flex gap-2">
-        {wa && <a href={`https://wa.me/${wa.length <= 11 ? "55" + wa : wa}`} target="_blank" rel="noreferrer" className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-ok py-3 font-bold text-primary-foreground"><MessageCircle className="h-5 w-5" /> WhatsApp</a>}
+         {(wa.length === 10 || wa.length === 11) && <a href={`https://wa.me/55${wa}`} target="_blank" rel="noreferrer" className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-ok py-3 font-bold text-primary-foreground"><MessageCircle className="h-5 w-5" /> WhatsApp</a>}
          <Button variant="outline" onClick={onEdit} className="h-12 flex-1">Editar</Button>
       </div>
       <p className="mb-2 font-display text-xl">Histórico de compras</p>

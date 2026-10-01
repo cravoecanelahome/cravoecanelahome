@@ -40,6 +40,18 @@ export const customerInputSchema = z.object({
   state: z.string().trim().refine((v) => !v || /^[A-Z]{2}$/.test(v), "Selecione um estado."),
   postalCode: z.string().refine((v) => !v || /^\d{5}-\d{3}$/.test(v), "Use o CEP 00000-000."),
   notes: z.string().trim().max(1000),
-}).refine((v) => !v.addressNumber || !!v.street, { path: ["street"], message: "Informe a rua ou avenida." });
+}).superRefine((v, context) => {
+  const hasAddress = [v.street, v.addressNumber, v.addressComplement, v.city, v.state, v.postalCode].some(Boolean);
+  if (!hasAddress) return;
+  for (const [key, message] of [
+    ["street", "Informe a rua ou avenida."],
+    ["addressNumber", "Informe o número (ou S/N)."],
+    ["city", "Informe a cidade."],
+    ["state", "Selecione o estado."],
+    ["postalCode", "Informe o CEP."],
+  ] as const) {
+    if (!v[key]) context.addIssue({ code: z.ZodIssueCode.custom, path: [key], message });
+  }
+});
 
 export type CustomerInput = z.infer<typeof customerInputSchema>;
