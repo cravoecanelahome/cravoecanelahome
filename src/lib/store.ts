@@ -46,7 +46,7 @@ const toCustomer = (r: any): Customer => ({
 export function customerAddress(c: Customer) {
   const street = [c.street, c.addressNumber].filter(Boolean).join(", ");
   const parts = [street, c.addressComplement, [c.city, c.state].filter(Boolean).join(" - "), c.postalCode].filter(Boolean);
-  return [c.address, ...parts].filter(Boolean).join(" · ");
+  return [...parts, c.address].filter(Boolean).join(" · ");
 }
 export type Fees = { pix: number; debit: number; credit: number; installmentBase: number; installmentPer: number };
 
