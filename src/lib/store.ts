@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { customerInputSchema, type CustomerInput } from "@/lib/customer-fields";
+import { saveCustomerRecord } from "@/lib/customer.functions";
 
 export type Product = {
   id: string;
@@ -34,7 +36,18 @@ export type Sale = {
   date: string;
   customerId: string | null;
 };
-export type Customer = { id: string; name: string; whatsapp: string | null; birthday: string | null; address: string | null; notes: string | null };
+export type Customer = { id: string; name: string; whatsapp: string | null; birthday: string | null; address: string | null; street: string | null; addressNumber: string | null; addressComplement: string | null; city: string | null; state: string | null; postalCode: string | null; notes: string | null };
+const customerColumns = "id,name,whatsapp,birthday,address,street,address_number,address_complement,city,state,postal_code,notes";
+const toCustomer = (r: any): Customer => ({
+  id: r.id, name: r.name, whatsapp: r.whatsapp, birthday: r.birthday, address: r.address,
+  street: r.street, addressNumber: r.address_number, addressComplement: r.address_complement,
+  city: r.city, state: r.state, postalCode: r.postal_code, notes: r.notes,
+});
+export function customerAddress(c: Customer) {
+  const street = [c.street, c.addressNumber].filter(Boolean).join(", ");
+  const parts = [street, c.addressComplement, [c.city, c.state].filter(Boolean).join(" - "), c.postalCode].filter(Boolean);
+  return [...parts, c.address].filter(Boolean).join(" · ");
+}
 export type Fees = { pix: number; debit: number; credit: number; installmentBase: number; installmentPer: number };
 
 export const CATEGORIES = ["Aromatizadores", "Velas", "Vasos", "Decoração", "Presentes", "Outros"];
@@ -83,8 +96,8 @@ async function loadSales() {
   if (data) emit({ sales: data.map(toSale) });
 }
 async function loadCustomers() {
-  const { data } = await supabase.from("customers").select("id,name,whatsapp,birthday,address,notes").order("name");
-  if (data) emit({ customers: data as Customer[] });
+  const { data } = await supabase.from("customers").select(customerColumns).order("name");
+  if (data) emit({ customers: data.map(toCustomer) });
 }
 async function loadFees() {
   if (state.role !== "admin") return;
@@ -223,14 +236,11 @@ export function resizeImage(file: File, max = 480): Promise<string> {
   });
 }
 
-export async function saveCustomer(c: Omit<Customer, "id"> & { id?: string }): Promise<Customer> {
-  const row = { name: c.name.trim(), whatsapp: c.whatsapp || null, birthday: c.birthday || null, address: c.address || null, notes: c.notes || null };
-  const res = c.id
-    ? await supabase.from("customers").update(row).eq("id", c.id).select("id,name,whatsapp,birthday,address,notes").single()
-    : await supabase.from("customers").insert(row).select("id,name,whatsapp,birthday,address,notes").single();
-  if (res.error) throw res.error;
+export async function saveCustomer(input: CustomerInput): Promise<Customer> {
+  const c = customerInputSchema.parse(input);
+  const row = await saveCustomerRecord({ data: c });
   await loadCustomers();
-  return res.data as Customer;
+  return toCustomer(row);
 }
 export async function deleteCustomer(id: string) {
   const { error } = await supabase.from("customers").delete().eq("id", id);

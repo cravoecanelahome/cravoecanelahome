@@ -1,0 +1,4 @@
+- [x] Separate customer address fields without discarding older addresses.
+- [x] Standardize name, address, WhatsApp, CEP, and birthday entry.
+- [x] Verify the customer form and save flow.
+- [x] Apply required package security update.

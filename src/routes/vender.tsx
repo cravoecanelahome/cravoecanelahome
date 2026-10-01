@@ -12,6 +12,8 @@ export const Route = createFileRoute("/vender")({
       { name: "description", content: "Registre vendas em poucos toques com baixa automática no estoque." },
       { property: "og:title", content: "Registrar venda — Cravo & Canela Home" },
       { property: "og:description", content: "Venda rápida com Pix, cartão ou dinheiro." },
+       { property: "og:type", content: "website" },
+       { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Vender,

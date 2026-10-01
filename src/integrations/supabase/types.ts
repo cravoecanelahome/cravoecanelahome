@@ -17,34 +17,52 @@ export type Database = {
       customers: {
         Row: {
           address: string | null
+          address_complement: string | null
+          address_number: string | null
           birthday: string | null
+          city: string | null
           created_at: string
           created_by: string | null
           id: string
           name: string
           notes: string | null
+          postal_code: string | null
+          state: string | null
+          street: string | null
           updated_at: string
           whatsapp: string | null
         }
         Insert: {
           address?: string | null
+          address_complement?: string | null
+          address_number?: string | null
           birthday?: string | null
+          city?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           name: string
           notes?: string | null
+          postal_code?: string | null
+          state?: string | null
+          street?: string | null
           updated_at?: string
           whatsapp?: string | null
         }
         Update: {
           address?: string | null
+          address_complement?: string | null
+          address_number?: string | null
           birthday?: string | null
+          city?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           name?: string
           notes?: string | null
+          postal_code?: string | null
+          state?: string | null
+          street?: string | null
           updated_at?: string
           whatsapp?: string | null
         }

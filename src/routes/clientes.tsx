@@ -3,7 +3,9 @@ import { useEffect, useState } from "react";
 import { Cake, MessageCircle, Plus, Search } from "lucide-react";
 import { Shell } from "@/components/Shell";
 import { CustomerForm, Modal } from "@/components/CustomerForm";
-import { brl, customerHistory, deleteCustomer, onlyDigits, useStore, type Customer, type HistoryItem } from "@/lib/store";
+import { Button } from "@/components/ui/button";
+import { formatPhone } from "@/lib/customer-fields";
+import { brl, customerAddress, customerHistory, deleteCustomer, onlyDigits, useStore, type Customer, type HistoryItem } from "@/lib/store";
 
 export const Route = createFileRoute("/clientes")({
   head: () => ({
@@ -38,16 +40,16 @@ function Clientes() {
     <Shell>
       <div className="mb-4 flex items-center justify-between gap-2">
         <h1 className="font-display text-3xl md:text-4xl">Clientes</h1>
-        <button onClick={() => setEdit({})} className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-3 font-bold text-primary-foreground"><Plus className="h-5 w-5" /> Novo</button>
+         <Button onClick={() => setEdit({})} className="h-11"><Plus className="h-5 w-5" /> Novo</Button>
       </div>
       <div className="mb-4 flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nome ou WhatsApp..." className="inp !pl-12" />
         </div>
-        <button onClick={() => setMonth(!month)} className={`flex items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3 font-bold ${month ? "border-accent bg-accent/15 text-accent-foreground" : "border-border"}`}>
+         <Button variant="outline" onClick={() => setMonth(!month)} className={`h-12 ${month ? "border-accent bg-accent/15 text-accent-foreground" : ""}`}>
           <Cake className="h-5 w-5" /> Aniversariantes do mês
-        </button>
+         </Button>
       </div>
       {list.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-border bg-card p-8 text-center text-muted-foreground">{month ? "Nenhum aniversariante este mês." : "Nenhum cliente encontrado."}</p>
@@ -55,10 +57,10 @@ function Clientes() {
         <ul className="grid gap-2 sm:grid-cols-2">
           {list.map((c) => (
             <li key={c.id}>
-              <button onClick={() => setOpen(c)} className="w-full rounded-2xl border border-border bg-card p-4 text-left">
+               <Button variant="outline" onClick={() => setOpen(c)} className="h-auto w-full flex-col items-start gap-1 whitespace-normal p-4 text-left">
                 <p className="font-semibold">{c.name}</p>
-                <p className="text-sm text-muted-foreground">{[c.whatsapp, c.address, c.birthday && `🎂 ${bday(c.birthday)}`].filter(Boolean).join(" · ")}</p>
-              </button>
+                 <p className="text-sm text-muted-foreground">{[c.whatsapp && formatPhone(c.whatsapp), customerAddress(c), c.birthday && `🎂 ${bday(c.birthday)}`].filter(Boolean).join(" · ")}</p>
+               </Button>
             </li>
           ))}
         </ul>
@@ -81,14 +83,14 @@ function Detail({ c, admin, onClose, onEdit }: { c: Customer; admin: boolean; on
   return (
     <Modal title={c.name} onClose={onClose}>
       <div className="mb-4 space-y-1 text-sm">
-        {c.whatsapp && <p><b>WhatsApp:</b> {c.whatsapp}</p>}
+         {c.whatsapp && <p><b>WhatsApp:</b> {formatPhone(c.whatsapp)}</p>}
         {c.birthday && <p><b>Aniversário:</b> {bday(c.birthday)}</p>}
-        {c.address && <p><b>Endereço:</b> {c.address}</p>}
+         {customerAddress(c) && <p><b>Endereço:</b> {customerAddress(c)}</p>}
         {c.notes && <p className="whitespace-pre-wrap"><b>Gostos:</b> {c.notes}</p>}
       </div>
       <div className="mb-4 flex gap-2">
-        {wa && <a href={`https://wa.me/${wa.length <= 11 ? "55" + wa : wa}`} target="_blank" rel="noreferrer" className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-ok py-3 font-bold text-primary-foreground"><MessageCircle className="h-5 w-5" /> WhatsApp</a>}
-        <button onClick={onEdit} className="flex-1 rounded-2xl border border-border py-3 font-bold">Editar</button>
+         {(wa.length === 10 || wa.length === 11) && <a href={`https://wa.me/55${wa}`} target="_blank" rel="noreferrer" className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-ok py-3 font-bold text-primary-foreground"><MessageCircle className="h-5 w-5" /> WhatsApp</a>}
+         <Button variant="outline" onClick={onEdit} className="h-12 flex-1">Editar</Button>
       </div>
       <p className="mb-2 font-display text-xl">Histórico de compras</p>
       {hist === null ? <p className="text-muted-foreground">Carregando…</p> : hist.length === 0 ? <p className="text-muted-foreground">Nenhuma compra vinculada ainda.</p> : (
@@ -105,8 +107,8 @@ function Detail({ c, admin, onClose, onEdit }: { c: Customer; admin: boolean; on
         </>
       )}
       {admin && (
-        <button onClick={() => { if (confirm(`Excluir ${c.name}? As vendas continuam registradas.`)) deleteCustomer(c.id).then(onClose).catch(() => alert("Não foi possível excluir.")); }}
-          className="mt-4 w-full rounded-2xl py-2 text-sm font-semibold text-destructive">Excluir cliente</button>
+         <Button variant="ghost" onClick={() => { if (confirm(`Excluir ${c.name}? As vendas continuam registradas.`)) deleteCustomer(c.id).then(onClose).catch(() => alert("Não foi possível excluir.")); }}
+           className="mt-4 w-full text-destructive">Excluir cliente</Button>
       )}
     </Modal>
   );

@@ -13,6 +13,8 @@ export const Route = createFileRoute("/estoque")({
       { name: "description", content: "Catálogo de produtos com fotos, estoque e margem de lucro." },
       { property: "og:title", content: "Estoque — Cravo & Canela Home" },
       { property: "og:description", content: "Catálogo e controle de estoque da loja." },
+       { property: "og:type", content: "website" },
+       { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Estoque,

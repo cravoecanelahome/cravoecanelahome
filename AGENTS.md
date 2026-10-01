@@ -11,3 +11,4 @@
 
 - Access control: roles live in `team_members` (keyed by email, checked via `current_app_role()`/`is_admin()`); public signup is disabled and accounts are created only by invite from server functions in `src/lib/team.functions.ts`. Why: keeps roles off user records and lets admins change emails.
 - Sellers never read `products`/`sales`/`fee_settings` directly; they use the `catalog()`/`today_sales()` functions and `register_sale()` computes fees server-side. Why: hides costs and margins at the database level, not just in the screens.
+- Customer writes use a validated authenticated server function; structured address columns coexist with the legacy address field. Why: enforce format beyond the browser and preserve older customer records.
