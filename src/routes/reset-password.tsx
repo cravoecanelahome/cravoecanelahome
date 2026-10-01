@@ -9,6 +9,8 @@ export const Route = createFileRoute("/reset-password")({
       { name: "description", content: "Crie uma nova senha para acessar o sistema da loja." },
       { property: "og:title", content: "Nova senha — Cravo & Canela Home" },
       { property: "og:description", content: "Redefinição de senha do sistema da loja." },
+       { property: "og:type", content: "website" },
+       { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Reset,
