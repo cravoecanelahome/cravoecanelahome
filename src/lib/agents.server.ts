@@ -34,29 +34,28 @@ export async function runAgent(sb: any, agent: AgentId, history: { author: strin
   const { ctx, products } = await buildContext(sb, agent);
   const tools = agent === "estoque" ? [{
     type: "function",
-    function: {
-      name: "propor_movimentos",
-      description: "Propõe entradas/saídas de estoque para confirmação.",
-      parameters: {
-        type: "object",
-        properties: {
-          itens: { type: "array", items: { type: "object", properties: {
-            productId: { type: "string" }, kind: { type: "string", enum: ["entrada", "saida"] },
-            qty: { type: "integer", minimum: 1 }, unitCost: { type: "number" }, freight: { type: "number" },
-          }, required: ["productId", "kind", "qty"] } },
-          resposta: { type: "string", description: "Resumo curto para o usuário" },
-        },
-        required: ["itens", "resposta"],
+    name: "propor_movimentos",
+    description: "Propõe entradas/saídas de estoque para confirmação.",
+    parameters: {
+      type: "object",
+      properties: {
+        itens: { type: "array", items: { type: "object", properties: {
+          productId: { type: "string" }, kind: { type: "string", enum: ["entrada", "saida"] },
+          qty: { type: "integer", minimum: 1 }, unitCost: { type: "number" }, freight: { type: "number" },
+        }, required: ["productId", "kind", "qty", "unitCost", "freight"], additionalProperties: false } },
+        resposta: { type: "string", description: "Resumo curto para o usuário" },
       },
+      required: ["itens", "resposta"],
+      additionalProperties: false,
     },
   }] : undefined;
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
-      messages: [
-        { role: "system", content: `${PROMPTS[agent]}\n\n${ctx}` },
+      model: "openai/gpt-6-astra",
+      instructions: `${PROMPTS[agent]}\n\n${ctx}`,
+      input: [
         ...history.slice(-12).map((h) => ({ role: h.author === "user" ? "user" : "assistant", content: h.content })),
         { role: "user", content: message },
       ],
@@ -65,15 +64,15 @@ export async function runAgent(sb: any, agent: AgentId, history: { author: strin
   });
   if (res.status === 429) throw new Error("Muitos pedidos agora, tente em instantes.");
   if (res.status === 402) throw new Error("Créditos de IA esgotados.");
-  if (!res.ok) throw new Error("O agente não respondeu.");
+  if (!res.ok) { console.error("agent", res.status, await res.text()); throw new Error("O agente não respondeu."); }
   const json: any = await res.json();
-  const msg = json.choices?.[0]?.message ?? {};
-  let reply: string = msg.content ?? "";
+  const output: any[] = json.output ?? [];
+  let reply: string = json.output_text ?? output.filter((o) => o.type === "message").flatMap((o) => o.content ?? []).map((c: any) => c.text ?? "").join("");
   let proposals: Proposal[] = [];
-  const call = msg.tool_calls?.[0];
-  if (call?.function?.arguments) {
+  const call = output.find((o) => o.type === "function_call");
+  if (call?.arguments) {
     try {
-      const args = JSON.parse(call.function.arguments);
+      const args = JSON.parse(call.arguments);
       reply = args.resposta || reply || "Confira os movimentos abaixo.";
       proposals = (args.itens ?? []).flatMap((i: any) => {
         const p = products.find((x) => x.id === i.productId);
