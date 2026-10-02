@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { LayoutDashboard, LogOut, Package, ShoppingBag, Users, Contact } from "lucide-react";
+import { useEffect, useState } from "react";
+import { LayoutDashboard, LogOut, Package, ShoppingBag, Users, Contact, Bot } from "lucide-react";
 import { AuthGate } from "@/components/AuthGate";
 import { supabase } from "@/integrations/supabase/client";
 import { useStore, type Role, type Status } from "@/lib/store";
@@ -10,20 +11,31 @@ const allNav = [
   { to: "/estoque", label: "Estoque", icon: Package, admin: false },
   { to: "/vender", label: "Vender", icon: ShoppingBag, admin: false },
   { to: "/clientes", label: "Clientes", icon: Contact, admin: false },
-  { to: "/equipe", label: "Equipe", icon: Users, admin: true },
+  { to: "/agentes", label: "Agentes", icon: Bot, admin: true },
+  { to: "/equipe", label: "Equipe", icon: Users, admin: true, owner: true },
 ] as const;
 
-export function Shell({ children, adminOnly }: { children: ReactNode; adminOnly?: boolean | undefined }) {
+export const OWNER_EMAIL = "juniorrefundini10@gmail.com";
+
+function useEmail() {
+  const [email, setEmail] = useState<string | null>(null);
+  useEffect(() => { supabase.auth.getSession().then(({ data }) => setEmail(data.session?.user.email?.toLowerCase() ?? null)); }, []);
+  return email;
+}
+
+export function Shell({ children, adminOnly, ownerOnly }: { children: ReactNode; adminOnly?: boolean | undefined; ownerOnly?: boolean | undefined }) {
   return (
     <AuthGate>
-      <Inner adminOnly={adminOnly}>{children}</Inner>
+      <Inner adminOnly={adminOnly || ownerOnly} ownerOnly={ownerOnly}>{children}</Inner>
     </AuthGate>
   );
 }
 
-function Inner({ children, adminOnly }: { children: ReactNode; adminOnly?: boolean | undefined }) {
+function Inner({ children, adminOnly, ownerOnly }: { children: ReactNode; adminOnly?: boolean | undefined; ownerOnly?: boolean | undefined }) {
   const { ready, role } = useStore();
-  const nav = allNav.filter((n) => role === "admin" || !n.admin);
+  const email = useEmail();
+  const isOwner = role === "admin" && email === OWNER_EMAIL;
+  const nav = allNav.filter((n) => (role === "admin" || !n.admin) && (!("owner" in n) || isOwner));
   if (!ready) return <div className="grid min-h-screen place-items-center bg-background text-muted-foreground">Carregando…</div>;
   if (!role) return <NoAccess />;
   return (
@@ -53,9 +65,9 @@ function Inner({ children, adminOnly }: { children: ReactNode; adminOnly?: boole
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-6">
-        {adminOnly && role !== "admin" ? <Restricted role={role} /> : children}
+        {(adminOnly && role !== "admin") || (ownerOnly && email !== null && !isOwner) ? <Restricted role={role} /> : ownerOnly && email === null ? null : children}
       </main>
-      <nav className={`fixed inset-x-0 bottom-0 z-40 grid border-t border-border bg-card md:hidden ${nav.length === 5 ? "grid-cols-5" : "grid-cols-3"}`}>
+      <nav className={`fixed inset-x-0 bottom-0 z-40 grid border-t border-border bg-card md:hidden ${({ 3: "grid-cols-3", 5: "grid-cols-5", 6: "grid-cols-6" } as Record<number, string>)[nav.length] ?? "grid-cols-4"}`}>
         {nav.map((n) => (
           <Link
             key={n.to}
