@@ -10,15 +10,22 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AgentesRouteImport } from './routes/agentes'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as EquipeRouteImport } from './routes/equipe'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as VenderRouteImport } from './routes/vender'
+import { Route as ApiPublicAgentsRouteImport } from './routes/api/public/agents'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentesRoute = AgentesRouteImport.update({
+  id: '/agentes',
+  path: '/agentes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientesRoute = ClientesRouteImport.update({
@@ -46,55 +53,85 @@ const VenderRoute = VenderRouteImport.update({
   path: '/vender',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentsRoute = ApiPublicAgentsRouteImport.update({
+  id: '/api/public/agents',
+  path: '/api/public/agents',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agentes': typeof AgentesRoute
   '/clientes': typeof ClientesRoute
   '/equipe': typeof EquipeRoute
   '/estoque': typeof EstoqueRoute
   '/reset-password': typeof ResetPasswordRoute
   '/vender': typeof VenderRoute
+  '/api/public/agents': typeof ApiPublicAgentsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agentes': typeof AgentesRoute
   '/clientes': typeof ClientesRoute
   '/equipe': typeof EquipeRoute
   '/estoque': typeof EstoqueRoute
   '/reset-password': typeof ResetPasswordRoute
   '/vender': typeof VenderRoute
+  '/api/public/agents': typeof ApiPublicAgentsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agentes': typeof AgentesRoute
   '/clientes': typeof ClientesRoute
   '/equipe': typeof EquipeRoute
   '/estoque': typeof EstoqueRoute
   '/reset-password': typeof ResetPasswordRoute
   '/vender': typeof VenderRoute
+  '/api/public/agents': typeof ApiPublicAgentsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/clientes' | '/equipe' | '/estoque' | '/reset-password' | '/vender'
-  fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/clientes' | '/equipe' | '/estoque' | '/reset-password' | '/vender'
-  id:
-    | '__root__'
     | '/'
+    | '/agentes'
     | '/clientes'
     | '/equipe'
     | '/estoque'
     | '/reset-password'
     | '/vender'
+    | '/api/public/agents'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/agentes'
+    | '/clientes'
+    | '/equipe'
+    | '/estoque'
+    | '/reset-password'
+    | '/vender'
+    | '/api/public/agents'
+  id:
+    | '__root__'
+    | '/'
+    | '/agentes'
+    | '/clientes'
+    | '/equipe'
+    | '/estoque'
+    | '/reset-password'
+    | '/vender'
+    | '/api/public/agents'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgentesRoute: typeof AgentesRoute
   ClientesRoute: typeof ClientesRoute
   EquipeRoute: typeof EquipeRoute
   EstoqueRoute: typeof EstoqueRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   VenderRoute: typeof VenderRoute
+  ApiPublicAgentsRoute: typeof ApiPublicAgentsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -104,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agentes': {
+      id: '/agentes'
+      path: '/agentes'
+      fullPath: '/agentes'
+      preLoaderRoute: typeof AgentesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/clientes': {
@@ -141,16 +185,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VenderRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agents': {
+      id: '/api/public/agents'
+      path: '/api/public/agents'
+      fullPath: '/api/public/agents'
+      preLoaderRoute: typeof ApiPublicAgentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgentesRoute: AgentesRoute,
   ClientesRoute: ClientesRoute,
   EquipeRoute: EquipeRoute,
   EstoqueRoute: EstoqueRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   VenderRoute: VenderRoute,
+  ApiPublicAgentsRoute: ApiPublicAgentsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

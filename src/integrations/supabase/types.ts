@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_messages: {
+        Row: {
+          agent: string
+          author: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+        }
+        Insert: {
+          agent: string
+          author: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+        }
+        Update: {
+          agent?: string
+          author?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           address: string | null
@@ -224,6 +251,56 @@ export type Database = {
           },
         ]
       }
+      stock_movements: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          freight: number
+          id: string
+          kind: string
+          note: string | null
+          product_id: string | null
+          product_name: string
+          qty: number
+          source: string
+          unit_cost: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          freight?: number
+          id?: string
+          kind: string
+          note?: string | null
+          product_id?: string | null
+          product_name: string
+          qty: number
+          source?: string
+          unit_cost?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          freight?: number
+          id?: string
+          kind?: string
+          note?: string | null
+          product_id?: string | null
+          product_name?: string
+          qty?: number
+          source?: string
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_members: {
         Row: {
           created_at: string
@@ -285,6 +362,7 @@ export type Database = {
         }[]
       }
       is_admin: { Args: never; Returns: boolean }
+      is_owner: { Args: never; Returns: boolean }
       register_sale: {
         Args: {
           _channel: string

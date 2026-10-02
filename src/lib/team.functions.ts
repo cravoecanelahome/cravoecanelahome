@@ -40,8 +40,8 @@ export const requestAccess = createServerFn({ method: "POST" })
   });
 
 async function assertAdmin(ctx: { supabase: any }) {
-  const { data } = await ctx.supabase.rpc("is_admin");
-  if (!data) throw new Error("Apenas administradores.");
+  const { data } = await ctx.supabase.rpc("is_owner");
+  if (!data) throw new Error("Apenas o responsável pela equipe.");
 }
 
 export const addMember = createServerFn({ method: "POST" })

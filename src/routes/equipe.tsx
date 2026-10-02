@@ -26,7 +26,7 @@ const roleLabel: Record<Role, string> = { admin: "Administrador", vendedor: "Ven
 
 function Equipe() {
   return (
-    <Shell adminOnly>
+    <Shell ownerOnly>
       <Team />
     </Shell>
   );

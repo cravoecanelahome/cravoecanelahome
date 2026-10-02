@@ -1,4 +1,5 @@
-- [x] Separate customer address fields without discarding older addresses.
-- [x] Standardize name, address, WhatsApp, CEP, and birthday entry.
-- [x] Verify the customer form and save flow.
-- [x] Apply required package security update.
+- [x] Logout automático após 2h de inatividade.
+- [x] Guia Equipe só para juniorrefundini10@gmail.com (tela + banco).
+- [x] Revisão dos avisos de segurança.
+- [x] Agentes Gerente e Estoque (área privada dos admins, microfone, confirmação de movimentos).
+- [ ] Fluxo no n8n entre agentes — aguarda o Junior montar o fluxo no n8n (endereço e chave já prontos).

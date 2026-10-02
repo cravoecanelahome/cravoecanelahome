@@ -17,8 +17,33 @@ export function useSession() {
   return session;
 }
 
+const IDLE_MS = 2 * 60 * 60 * 1000;
+const IDLE_KEY = "cc-last-activity";
+
+/** Logout automático após 2h sem atividade (compartilhado entre abas). */
+function useIdleLogout(active: boolean) {
+  useEffect(() => {
+    if (!active) return;
+    const last = Number(localStorage.getItem(IDLE_KEY) || 0);
+    if (last && Date.now() - last > IDLE_MS) { supabase.auth.signOut(); return; }
+    let lastWrite = 0;
+    const touch = () => { const now = Date.now(); if (now - lastWrite > 30000) { lastWrite = now; localStorage.setItem(IDLE_KEY, String(now)); } };
+    touch();
+    const evs = ["pointerdown", "keydown", "scroll", "touchstart", "mousemove"] as const;
+    evs.forEach((e) => window.addEventListener(e, touch, { passive: true }));
+    const check = () => {
+      const t = Number(localStorage.getItem(IDLE_KEY) || Date.now());
+      if (Date.now() - t > IDLE_MS) { localStorage.removeItem(IDLE_KEY); supabase.auth.signOut(); }
+    };
+    const iv = setInterval(check, 60000);
+    document.addEventListener("visibilitychange", check);
+    return () => { evs.forEach((e) => window.removeEventListener(e, touch)); clearInterval(iv); document.removeEventListener("visibilitychange", check); };
+  }, [active]);
+}
+
 export function AuthGate({ children }: { children: ReactNode }) {
   const session = useSession();
+  useIdleLogout(!!session);
   if (session === undefined) return <div className="grid min-h-screen place-items-center bg-background text-muted-foreground">Carregando…</div>;
   if (!session) return <Login />;
   return <>{children}</>;
@@ -39,6 +64,7 @@ function Login() {
       if (mode === "in") {
         const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
         if (error) setMsg("E-mail ou senha incorretos.");
+        else localStorage.setItem(IDLE_KEY, String(Date.now()));
       } else {
         await requestAccess({ data: { email } });
         setMsg("Se este e-mail estiver autorizado pela equipe, enviamos um link para você criar sua senha.");
