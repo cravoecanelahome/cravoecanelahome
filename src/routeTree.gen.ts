@@ -16,7 +16,6 @@ import { Route as EquipeRouteImport } from './routes/equipe'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as VenderRouteImport } from './routes/vender'
-import { Route as ApiPublicAgentsRouteImport } from './routes/api/public/agents'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -53,11 +52,6 @@ const VenderRoute = VenderRouteImport.update({
   path: '/vender',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicAgentsRoute = ApiPublicAgentsRouteImport.update({
-  id: '/api/public/agents',
-  path: '/api/public/agents',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -67,7 +61,6 @@ export interface FileRoutesByFullPath {
   '/estoque': typeof EstoqueRoute
   '/reset-password': typeof ResetPasswordRoute
   '/vender': typeof VenderRoute
-  '/api/public/agents': typeof ApiPublicAgentsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -77,7 +70,6 @@ export interface FileRoutesByTo {
   '/estoque': typeof EstoqueRoute
   '/reset-password': typeof ResetPasswordRoute
   '/vender': typeof VenderRoute
-  '/api/public/agents': typeof ApiPublicAgentsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -88,7 +80,6 @@ export interface FileRoutesById {
   '/estoque': typeof EstoqueRoute
   '/reset-password': typeof ResetPasswordRoute
   '/vender': typeof VenderRoute
-  '/api/public/agents': typeof ApiPublicAgentsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -100,7 +91,6 @@ export interface FileRouteTypes {
     | '/estoque'
     | '/reset-password'
     | '/vender'
-    | '/api/public/agents'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -110,7 +100,6 @@ export interface FileRouteTypes {
     | '/estoque'
     | '/reset-password'
     | '/vender'
-    | '/api/public/agents'
   id:
     | '__root__'
     | '/'
@@ -120,7 +109,6 @@ export interface FileRouteTypes {
     | '/estoque'
     | '/reset-password'
     | '/vender'
-    | '/api/public/agents'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -131,7 +119,6 @@ export interface RootRouteChildren {
   EstoqueRoute: typeof EstoqueRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   VenderRoute: typeof VenderRoute
-  ApiPublicAgentsRoute: typeof ApiPublicAgentsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -185,13 +172,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VenderRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/agents': {
-      id: '/api/public/agents'
-      path: '/api/public/agents'
-      fullPath: '/api/public/agents'
-      preLoaderRoute: typeof ApiPublicAgentsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -203,7 +183,6 @@ const rootRouteChildren: RootRouteChildren = {
   EstoqueRoute: EstoqueRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   VenderRoute: VenderRoute,
-  ApiPublicAgentsRoute: ApiPublicAgentsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

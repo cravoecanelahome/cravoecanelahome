@@ -14,5 +14,4 @@
 - Customer writes use a validated authenticated server function; structured address columns coexist with the legacy address field. Why: enforce format beyond the browser and preserve older customer records.
 - Team management is owner-only (`is_owner()` in RLS and `team.functions.ts`; Shell hides the tab by the same email). Why: only the owner may grant access, even among admins.
 - AI agents (`/agentes`) run in admin-only server functions (`agents.functions.ts` → `agents.server.ts`); stock changes are proposed by the AI and applied only after explicit confirmation, logged in `stock_movements`. Why: keeps sensitive costs out of shared channels and prevents unreviewed AI writes.
-- n8n reaches agents via `/api/public/agents` with the `x-agent-secret` header (AGENTS_N8N_SECRET); it returns advice/proposals only and never writes. Why: external callers must not alter stock.
 - Inactivity logout lives in AuthGate using a shared localStorage timestamp. Why: applies across tabs without server state.

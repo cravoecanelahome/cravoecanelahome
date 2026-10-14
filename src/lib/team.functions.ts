@@ -1,14 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const emailSchema = z.string().trim().toLowerCase().email().max(255);
 const roleSchema = z.enum(["admin", "vendedor"]);
 
+/** URL fixa do app (APP_URL), nunca o header Origin, para o link de senha. */
 function redirectUrl() {
-  const origin = getRequest()?.headers.get("origin") ?? "";
-  return /^https?:\/\//.test(origin) ? `${origin}/reset-password` : undefined;
+  const base = (process.env["APP_URL"] ?? "").trim().replace(/\/+$/, "");
+  return /^https:\/\//.test(base) ? `${base}/reset-password` : undefined;
 }
 
 async function admin() {
@@ -34,7 +34,7 @@ export const requestAccess = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ email: emailSchema }).parse(d))
   .handler(async ({ data }) => {
     const a = await admin();
-    const { data: row } = await a.from("team_members").select("id").ilike("email", data.email).maybeSingle();
+    const { data: row } = await a.from("team_members").select("id").eq("email", data.email).maybeSingle();
     if (row) await sendAccessLink(data.email);
     return { ok: true };
   });
@@ -65,6 +65,7 @@ export const updateMember = createServerFn({ method: "POST" })
     const me = String(context.claims.email ?? "").toLowerCase();
     if (old.email.toLowerCase() === me && data.role !== "admin") throw new Error("Você não pode tirar seu próprio acesso de administrador.");
     const emailChanged = old.email.toLowerCase() !== data.email;
+    if (emailChanged && old.email.toLowerCase() === me) throw new Error("O responsável não pode trocar o próprio e-mail por aqui, pois o acesso à Equipe depende dele.");
     if (emailChanged) {
       const uid = await findUserId(old.email);
       if (uid) {
